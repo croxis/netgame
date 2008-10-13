@@ -534,6 +534,9 @@ namespace net
 			: Connection( protocolId, timeout )
 		{
 			ClearData();
+			#ifdef NET_UNIT_TEST
+			packet_loss_mask = 0;
+			#endif
 		}
 	
 		~ReliableConnection()
@@ -546,6 +549,15 @@ namespace net
 				
 		bool SendPacket( const unsigned char data[], int size )
 		{
+			#ifdef NET_UNIT_TEST
+			if ( local_sequence & packet_loss_mask )
+			{
+				AddSentPacketToQueues( local_sequence, time, size );
+				sent_packets++;
+				local_sequence++;
+				return true;
+			}
+			#endif
 			const int header = 12;
 			unsigned char packet[header+size];
 			unsigned int ack = remote_sequence;
@@ -593,6 +605,15 @@ namespace net
 			UpdateQueues();
 			UpdateStats();
 		}
+		
+		// unit test controls
+		
+		#ifdef NET_UNIT_TEST
+		void SetPacketLossMask( unsigned int mask )
+		{
+			packet_loss_mask = mask;
+		}
+		#endif
 
 		// data accessors
 				
@@ -862,6 +883,10 @@ namespace net
 		float rtt_maximum;					// maximum expected round trip time
 		
 		float time;							// time connection has been active (todo: use integer representation!)
+		
+		#ifdef NET_UNIT_TEST
+		unsigned int packet_loss_mask;		// mask sequence number, if non-zero, drop packet - for unit test only
+		#endif
 	};
 }
 
