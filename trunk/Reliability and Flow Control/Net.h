@@ -552,7 +552,7 @@ namespace net
 			#ifdef NET_UNIT_TEST
 			if ( local_sequence & packet_loss_mask )
 			{
-				AddSentPacketToQueues( local_sequence, time, size );
+				AddSentPacketToQueues( local_sequence, size );
 				sent_packets++;
 				local_sequence++;
 				return true;
@@ -567,7 +567,7 @@ namespace net
 			memcpy( packet + header, data, size );
  			if ( !Connection::SendPacket( packet, size + header ) )
 				return false;
-			AddSentPacketToQueues( local_sequence, time, size );
+			AddSentPacketToQueues( local_sequence, size );
 			sent_packets++;
 			local_sequence++;
 			return true;
@@ -589,7 +589,7 @@ namespace net
 			unsigned int packet_ack_bits = 0;
 			ReadHeader( packet, packet_sequence, packet_ack, packet_ack_bits );
 			ProcessAcks( packet_ack, packet_ack_bits );
-			AddReceivedPacketToQueue( packet_sequence, time, received_bytes - header );
+			AddReceivedPacketToQueue( packet_sequence, received_bytes - header );
 			if ( packet_sequence > remote_sequence )
 				remote_sequence = packet_sequence;
 			recv_packets++;
@@ -601,8 +601,7 @@ namespace net
 		{
 			acks.clear();
 			Connection::Update( deltaTime );
-			time += deltaTime;
-			UpdateQueues();
+			UpdateQueues( deltaTime );
 			UpdateStats();
 		}
 		
@@ -737,14 +736,14 @@ namespace net
 			{
 				if ( itor->sequence == ack )
 				{
-					const float packet_rtt = time - itor->time;
+					const float packet_rtt = itor->time;
 					rtt += ( packet_rtt - rtt ) * 0.01f;
 
 					PacketData data;
 					data.sequence = ack;
 					data.time = itor->time;
 					data.size = itor->size;
-					ackedQueue.push_back( data );
+					ackedQueue.sorted_insert( data );
 
 					acked_packets++;
 					
@@ -757,43 +756,57 @@ namespace net
 			}
 		}
 		
-		void AddSentPacketToQueues( unsigned int sequence, float time, int size )
+		void AddSentPacketToQueues( unsigned int sequence, int size )
 		{
 			PacketData p;
 			p.sequence = sequence;
-			p.time = time;
+			p.time = 0.0f;
 			p.size = size;
-			sentQueue.push_back( p );
+			sentQueue.push_back( p );				// note: sent packet and pending ack queue are always in sequence order, by definition
 			pendingAckQueue.push_back( p );
 		}
 		
-		void AddReceivedPacketToQueue( unsigned int sequence, float time, int size )
+		void AddReceivedPacketToQueue( unsigned int sequence, int size )
 		{
 			PacketData p;
 			p.sequence = sequence;
-			p.time = time;
+			p.time = 0.0f;
 			p.size = size;
-			receivedQueue.push_back( p );
+			receivedQueue.sorted_insert( p );
 		}
 		
-		void UpdateQueues()
+		void UpdateQueues( float deltaTime )
 		{
+			// advance time for queue entries (note: bounded to rtt_maximum * 2 )
+			
+			for ( PacketQueue::iterator itor = sentQueue.begin(); itor != sentQueue.end(); itor++ )
+				itor->time += deltaTime;
+
+			for ( PacketQueue::iterator itor = receivedQueue.begin(); itor != receivedQueue.end(); itor++ )
+				itor->time += deltaTime;
+
+			for ( PacketQueue::iterator itor = pendingAckQueue.begin(); itor != pendingAckQueue.end(); itor++ )
+				itor->time += deltaTime;
+
+			for ( PacketQueue::iterator itor = ackedQueue.begin(); itor != ackedQueue.end(); itor++ )
+				itor->time += deltaTime;
+			
+			// update queues
+			
 			const float epsilon = 0.001f;
 			
-			while ( sentQueue.size() && sentQueue.front().time < time - rtt_maximum - epsilon )
+			while ( sentQueue.size() && sentQueue.front().time > rtt_maximum + epsilon )
 				sentQueue.pop_front();
 				
-			receivedQueue.sort();
 			const unsigned int latest_recv_sequence = receivedQueue.back().sequence;
 			const unsigned int minimum_sequence = ( latest_recv_sequence > 33 ) ? latest_recv_sequence - 33 : 0;
 			while ( receivedQueue.size() && receivedQueue.front().sequence < minimum_sequence )
 				receivedQueue.pop_front();
 
-			ackedQueue.sort();
-			while ( ackedQueue.size() && ackedQueue.front().time < time - rtt_maximum * 2 )
+			while ( ackedQueue.size() && ackedQueue.front().time > rtt_maximum * 2 - epsilon )
 				ackedQueue.pop_front();
 
-			while ( pendingAckQueue.size() && pendingAckQueue.front().time < time - rtt_maximum - epsilon )
+			while ( pendingAckQueue.size() && pendingAckQueue.front().time > rtt_maximum + epsilon )
 			{
 				pendingAckQueue.pop_front();
 				lost_packets++;
@@ -810,7 +823,7 @@ namespace net
 			int acked_bytes_per_second = 0;
 			for ( PacketQueue::iterator itor = ackedQueue.begin(); itor != ackedQueue.end(); ++itor )
 			{
-				if ( itor->time <= time - rtt_maximum )
+				if ( itor->time >= rtt_maximum )
 				{
 					acked_packets_per_second++;
 					acked_bytes_per_second += itor->size;
@@ -849,23 +862,7 @@ namespace net
 			acked_bandwidth = 0.0f;
 			rtt = 0.0f;
 			rtt_maximum = 1.0f;
-			time = 0.0f;
 		}
-
-		struct PacketData
-		{
-			unsigned int sequence;			// packet sequence number
-			float time;					    // time packet was sent, received or acked (depending on context)
-			int size;						// packet size in bytes
-			bool operator < ( const PacketData & other ) const { return sequence < other.sequence; }
-		};
-
-		typedef std::list<PacketData> PacketQueue;
-
-		PacketQueue sentQueue;				// sent packets (kept until rtt_maximum)
-		PacketQueue receivedQueue;			// received packets for determining acks (32+1 entries kept only)
-		PacketQueue ackedQueue;				// acked packets (kept until rtt_maximum * 2)
-		PacketQueue pendingAckQueue;		// sent packets which have not been acked yet
 
 		std::vector<unsigned int> acks;		// acked packets from last set of packet receives. cleared each update!
 
@@ -882,11 +879,59 @@ namespace net
 		float rtt;							// estimated round trip time
 		float rtt_maximum;					// maximum expected round trip time
 		
-		float time;							// time connection has been active (todo: use integer representation!)
-		
 		#ifdef NET_UNIT_TEST
 		unsigned int packet_loss_mask;		// mask sequence number, if non-zero, drop packet - for unit test only
 		#endif
+
+		// packet queue definition
+
+		struct PacketData
+		{
+			unsigned int sequence;			// packet sequence number
+			float time;					    // time offset since packet was sent or received (depending on context)
+			int size;						// packet size in bytes
+			bool operator < ( const PacketData & other ) const { return sequence < other.sequence; }
+		};
+
+		class PacketQueue : public std::list<PacketData>
+		{
+		public:
+			void sorted_insert( const PacketData & p )
+			{
+				if ( empty() )
+				{
+					push_back( p );
+				}
+				else
+				{
+					if ( p.sequence < this->front().sequence )
+					{
+						push_front( p );
+					}
+					else if ( p.sequence > this->back().sequence )
+					{
+						push_back( p );
+					}
+					else
+					{
+						for ( PacketQueue::iterator itor = begin(); itor != end(); itor++ )
+						{
+							assert( itor->sequence != p.sequence );
+							if ( itor->sequence > p.sequence )
+							{
+								insert( itor, p );
+								break;
+							}
+						}
+					}
+				}
+			}
+		};
+
+		PacketQueue sentQueue;				// sent packets (kept until rtt_maximum)
+		PacketQueue receivedQueue;			// received packets for determining acks (32+1 entries kept only)
+		PacketQueue ackedQueue;				// acked packets (kept until rtt_maximum * 2)
+		PacketQueue pendingAckQueue;		// sent packets which have not been acked yet
 	};
 }
 
