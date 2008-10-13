@@ -441,6 +441,252 @@ void test_payload()
 	check( server.IsConnected() );
 }
 
+void test_acks()
+{
+	printf( "-----------------------------------------------------\n" );
+	printf( "test acks\n" );
+	printf( "-----------------------------------------------------\n" );
+
+	const int ServerPort = 30000;
+	const int ClientPort = 30001;
+	const int ProtocolId = 0x11112222;
+	const float DeltaTime = 0.001f;
+	const float TimeOut = 0.1f;
+	const unsigned int PacketCount = 100;
+	
+	ReliableConnection client( ProtocolId, TimeOut );
+	ReliableConnection server( ProtocolId, TimeOut );
+	
+	check( client.Start( ClientPort ) );
+	check( server.Start( ServerPort ) );
+	
+	client.Connect( Address(127,0,0,1,ServerPort ) );
+	server.Listen();
+		
+	bool clientAckedPackets[PacketCount];
+	bool serverAckedPackets[PacketCount];
+	for ( unsigned int i = 0; i < PacketCount; ++i )
+	{
+		clientAckedPackets[i] = false;
+		serverAckedPackets[i] = false;
+	}
+	
+	check( client.GetLocalSequence() == 0 );
+	check( server.GetLocalSequence() == 0 );
+
+	bool allPacketsAcked = false;
+
+	while ( true )
+	{
+		if ( !client.IsConnecting() && client.ConnectFailed() )
+			break;
+			
+		if ( allPacketsAcked )
+			break;
+		
+		unsigned char packet[256];
+		for ( unsigned int i = 0; i < sizeof(packet); ++i )
+			packet[i] = (unsigned char) i;
+		server.SendPacket( packet, sizeof(packet) );
+		client.SendPacket( packet, sizeof(packet) );
+		
+		while ( true )
+		{
+			unsigned char packet[256];
+			int bytes_read = client.ReceivePacket( packet, sizeof(packet) );
+			if ( bytes_read == 0 )
+				break;
+			check( bytes_read == sizeof(packet) );
+			for ( unsigned int i = 0; i < sizeof(packet); ++i )
+				check( packet[i] == (unsigned char) i );
+		}
+
+		while ( true )
+		{
+			unsigned char packet[256];
+			int bytes_read = server.ReceivePacket( packet, sizeof(packet) );
+			if ( bytes_read == 0 )
+				break;
+			check( bytes_read == sizeof(packet) );
+			for ( unsigned int i = 0; i < sizeof(packet); ++i )
+				check( packet[i] == (unsigned char) i );
+		}
+		
+		int ack_count = 0;
+		unsigned int * acks = NULL;
+		client.GetAcks( &acks, ack_count );
+		check( ack_count == 0 || ack_count != 0 && acks );
+		for ( int i = 0; i < ack_count; ++i )
+		{
+			unsigned int ack = acks[i];
+			if ( ack < PacketCount )
+			{
+				check( !clientAckedPackets[ack] );
+				clientAckedPackets[ack] = true;
+			}
+		}
+
+		server.GetAcks( &acks, ack_count );
+		check( ack_count == 0 || ack_count != 0 && acks );
+		for ( int i = 0; i < ack_count; ++i )
+		{
+			unsigned int ack = acks[i];
+			if ( ack < PacketCount )
+			{
+				check( !serverAckedPackets[ack] );
+				serverAckedPackets[ack] = true;
+			}
+		}
+		
+		unsigned int clientAckCount = 0;
+		unsigned int serverAckCount = 0;
+		for ( unsigned int i = 0; i < PacketCount; ++i )
+		{
+			if ( clientAckedPackets[i] )
+				clientAckCount++;
+			if ( serverAckedPackets[i] )
+				serverAckCount++;
+		}
+		allPacketsAcked = clientAckCount == PacketCount && serverAckCount == PacketCount;
+		
+		client.Update( DeltaTime );
+		server.Update( DeltaTime );
+		
+		wait( DeltaTime );
+	}
+	
+	check( client.IsConnected() );
+	check( server.IsConnected() );
+}
+
+void test_ack_bits()
+{
+	printf( "-----------------------------------------------------\n" );
+	printf( "test ack bits\n" );
+	printf( "-----------------------------------------------------\n" );
+
+	const int ServerPort = 30000;
+	const int ClientPort = 30001;
+	const int ProtocolId = 0x11112222;
+	const float DeltaTime = 0.001f;
+	const float TimeOut = 0.1f;
+	const unsigned int PacketCount = 100;
+	
+	ReliableConnection client( ProtocolId, TimeOut );
+	ReliableConnection server( ProtocolId, TimeOut );
+	
+	check( client.Start( ClientPort ) );
+	check( server.Start( ServerPort ) );
+	
+	client.Connect( Address(127,0,0,1,ServerPort ) );
+	server.Listen();
+		
+	bool clientAckedPackets[PacketCount];
+	bool serverAckedPackets[PacketCount];
+	for ( unsigned int i = 0; i < PacketCount; ++i )
+	{
+		clientAckedPackets[i] = false;
+		serverAckedPackets[i] = false;
+	}
+	
+	check( client.GetLocalSequence() == 0 );
+	check( server.GetLocalSequence() == 0 );
+
+	bool allPacketsAcked = false;
+
+	while ( true )
+	{
+		if ( !client.IsConnecting() && client.ConnectFailed() )
+			break;
+			
+		if ( allPacketsAcked )
+			break;
+		
+		unsigned char packet[256];
+		for ( unsigned int i = 0; i < sizeof(packet); ++i )
+			packet[i] = (unsigned char) i;
+
+		for ( int i = 0; i < 10; ++i )
+		{
+			client.SendPacket( packet, sizeof(packet) );
+			
+			while ( true )
+			{
+				unsigned char packet[256];
+				int bytes_read = client.ReceivePacket( packet, sizeof(packet) );
+				if ( bytes_read == 0 )
+					break;
+				check( bytes_read == sizeof(packet) );
+				for ( unsigned int i = 0; i < sizeof(packet); ++i )
+					check( packet[i] == (unsigned char) i );
+			}
+
+			int ack_count = 0;
+			unsigned int * acks = NULL;
+			client.GetAcks( &acks, ack_count );
+			check( ack_count == 0 || ack_count != 0 && acks );
+			for ( int i = 0; i < ack_count; ++i )
+			{
+				unsigned int ack = acks[i];
+				if ( ack < PacketCount )
+				{
+					check( !clientAckedPackets[ack] );
+					clientAckedPackets[ack] = true;
+//					printf( "client ack %d\n", ack );
+				}
+			}
+
+			client.Update( DeltaTime * 0.1f );
+
+			wait( DeltaTime * 0.1f );
+		}
+		
+		server.SendPacket( packet, sizeof(packet) );
+
+		while ( true )
+		{
+			unsigned char packet[256];
+			int bytes_read = server.ReceivePacket( packet, sizeof(packet) );
+			if ( bytes_read == 0 )
+				break;
+			check( bytes_read == sizeof(packet) );
+			for ( unsigned int i = 0; i < sizeof(packet); ++i )
+				check( packet[i] == (unsigned char) i );
+		}
+
+		int ack_count = 0;
+		unsigned int * acks = NULL;
+		server.GetAcks( &acks, ack_count );
+		check( ack_count == 0 || ack_count != 0 && acks );
+		for ( int i = 0; i < ack_count; ++i )
+		{
+			unsigned int ack = acks[i];
+			if ( ack < PacketCount )
+			{
+				check( !serverAckedPackets[ack] );
+				serverAckedPackets[ack] = true;
+			}
+		}
+		
+		unsigned int clientAckCount = 0;
+		unsigned int serverAckCount = 0;
+		for ( unsigned int i = 0; i < PacketCount; ++i )
+		{
+			if ( clientAckedPackets[i] )
+				clientAckCount++;
+			if ( serverAckedPackets[i] )
+				serverAckCount++;
+		}
+//		printf( "client ack count = %d, server ack count = %d\n", clientAckCount, serverAckCount );
+		allPacketsAcked = clientAckCount == PacketCount && serverAckCount == PacketCount;
+		
+		server.Update( DeltaTime );
+	}
+	
+	check( client.IsConnected() );
+	check( server.IsConnected() );
+}
+
 void tests()
 {
 	test_join();
@@ -448,6 +694,8 @@ void tests()
 	test_join_busy();
 	test_rejoin();
 	test_payload();
+	test_acks();
+	test_ack_bits();
 
 	printf( "-----------------------------------------------------\n" );
 	printf( "passed!\n" );

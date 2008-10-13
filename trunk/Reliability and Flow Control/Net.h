@@ -482,8 +482,8 @@ namespace net
 					OnConnect();
 				}
 				timeoutAccumulator = 0.0f;
-				memcpy( data, &packet[4], size - 4 );
-				return size - 4;
+				memcpy( data, &packet[4], bytes_read - 4 );
+				return bytes_read - 4;
 			}
 			return 0;
 		}
@@ -524,7 +524,7 @@ namespace net
 		Address address;
 	};
 
-	// connection with reliability (acks)
+	// connection with reliability (seq/ack)
 
 	class ReliableConnection : public Connection
 	{
@@ -542,7 +542,7 @@ namespace net
 				Stop();
 		}
 		
-		// overriden functions
+		// overriden functions from "Connection"
 				
 		bool SendPacket( const unsigned char data[], int size )
 		{
@@ -564,22 +564,25 @@ namespace net
 		int ReceivePacket( unsigned char data[], int size )
 		{
 			const int header = 12;
-			unsigned char packet[header+size];
-			if ( !Connection::ReceivePacket( packet, header + size ) )
-				return false;
 			if ( size <= header )
+				return false;
+			unsigned char packet[header+size];
+			int received_bytes = Connection::ReceivePacket( packet, size + header );
+			if ( received_bytes == 0 )
+				return false;
+			if ( received_bytes <= header )
 				return false;
 			unsigned int packet_sequence = 0;
 			unsigned int packet_ack = 0;
 			unsigned int packet_ack_bits = 0;
 			ReadHeader( packet, packet_sequence, packet_ack, packet_ack_bits );
 			ProcessAcks( packet_ack, packet_ack_bits );
-			AddReceivedPacketToQueue( packet_sequence, time, size - header );
+			AddReceivedPacketToQueue( packet_sequence, time, received_bytes - header );
 			if ( packet_sequence > remote_sequence )
 				remote_sequence = packet_sequence;
 			recv_packets++;
-			memcpy( data, packet + header, size - header );
-			return size - header;
+			memcpy( data, packet + header, received_bytes - header );
+			return received_bytes - header;
 		}
 		
 		void Update( float deltaTime )
@@ -681,7 +684,8 @@ namespace net
 		
 		void GenerateAckBits( unsigned int ack, unsigned int & ack_bits )
 		{
-			const int steps = ack > 33 ? 32 : ( ack > 0 ? ack - 1 : 0 ); 
+			assert( ack_bits == 0 );
+			const int steps = ack >= 32 ? 32 : ( ack > 0 ? ack : 0 ); 
 			for ( int i = 0; i < steps; ++i )
 			{
 				unsigned int sequence = ack - 1 - i;
@@ -699,8 +703,8 @@ namespace net
 		
 		void ProcessAcks( unsigned int ack, unsigned int ack_bits )
 		{			
-			//ProcessAck( ack );
-			const int steps = ack > 33 ? 32 : ( ack > 0 ? ack - 1 : 0 ); 
+			ProcessAck( ack );
+			const int steps = ack >= 32 ? 32 : ( ack > 0 ? ack : 0 ); 
 			for ( int i = 0; i < steps; ++i )
 				if ( ( ack_bits >> i ) & 1 )
 					ProcessAck( ack - 1 - i );
