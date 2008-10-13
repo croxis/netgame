@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>documents</key>
+	<array>
+		<dict>
+			<key>filename</key>
+			<string>Net.h</string>
+			<key>lastUsed</key>
+			<date>2008-10-01T20:18:35Z</date>
+		</dict>
+		<dict>
+			<key>filename</key>
+			<string>Acks.cpp</string>
+			<key>lastUsed</key>
+			<date>2008-10-01T20:18:36Z</date>
+			<key>selected</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>filename</key>
+			<string>Test.cpp</string>
+			<key>lastUsed</key>
+			<date>2008-10-01T20:18:35Z</date>
+		</dict>
+		<dict>
+			<key>filename</key>
+			<string>Client.cpp</string>
+			<key>lastUsed</key>
+			<date>2008-10-01T20:18:34Z</date>
+		</dict>
+		<dict>
+			<key>filename</key>
+			<string>Server.cpp</string>
+			<key>lastUsed</key>
+			<date>2008-10-01T20:18:35Z</date>
+		</dict>
+		<dict>
+			<key>filename</key>
+			<string>FlowControl.cpp</string>
+			<key>lastUsed</key>
+			<date>2008-10-01T20:18:35Z</date>
+		</dict>
+		<dict>
+			<key>filename</key>
+			<string>makefile.apple</string>
+			<key>lastUsed</key>
+			<date>2008-10-01T20:18:34Z</date>
+		</dict>
+	</array>
+	<key>fileHierarchyDrawerWidth</key>
+	<integer>200</integer>
+	<key>metaData</key>
+	<dict/>
+	<key>showFileHierarchyDrawer</key>
+	<true/>
+	<key>windowFrame</key>
+	<string>{{203, 4}, {1075, 774}}</string>
+</dict>
+</plist>
