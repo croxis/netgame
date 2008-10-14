@@ -778,32 +778,6 @@ namespace net
 			}
 		}
 		
-		void ProcessAck( unsigned int ack )
-		{
-			for ( PacketQueue::iterator itor = pendingAckQueue.begin(); itor != pendingAckQueue.end(); ++itor )
-			{
-				if ( itor->sequence == ack )
-				{
-					const float packet_rtt = itor->time;
-					rtt += ( packet_rtt - rtt ) * 0.01f;
-
-					PacketData data;
-					data.sequence = ack;
-					data.time = itor->time;
-					data.size = itor->size;
-					ackedQueue.sorted_insert( data );
-
-					acked_packets++;
-					
-					acks.push_back( ack );
-
-					pendingAckQueue.erase( itor );
-
-					return;
-				}
-			}
-		}
-		
 		void AddSentPacketToQueues( unsigned int sequence, int size )
 		{
 			PacketData p;
