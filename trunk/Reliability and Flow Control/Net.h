@@ -938,8 +938,6 @@ namespace net
 					{
 						for ( PacketQueue::iterator itor = begin(); itor != end(); itor++ )
 						{
-							if ( itor->sequence == p.sequence )
-								printf( "duplicate seq %d\n", p.sequence );
 							assert( itor->sequence != p.sequence );
 							if ( itor->sequence > p.sequence )
 							{
