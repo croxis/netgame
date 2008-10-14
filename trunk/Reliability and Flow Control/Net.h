@@ -488,6 +488,11 @@ namespace net
 			return 0;
 		}
 		
+		int GetHeaderSize() const
+		{
+			return 4;
+		}
+		
 	protected:
 		
 		virtual void OnStart()		{}
@@ -669,7 +674,7 @@ namespace net
 		
 		int GetHeaderSize() const
 		{
-			return 12 + 4;		// 12 byte header for reliable connection + 4 byte header for connection = 16
+			return 12 + Connection::GetHeaderSize();
 		}
 		
 	protected:		
@@ -723,11 +728,54 @@ namespace net
 		
 		void ProcessAcks( unsigned int ack, unsigned int ack_bits )
 		{			
-			ProcessAck( ack );
-			const int steps = ack >= 32 ? 32 : ( ack > 0 ? ack : 0 ); 
-			for ( int i = 0; i < steps; ++i )
-				if ( ( ack_bits >> i ) & 1 )
-					ProcessAck( ack - 1 - i );
+			if ( pendingAckQueue.empty() )
+				return;
+				
+			const unsigned int minimum_ack = ack > 32 ? ack - 32 : 0;
+			
+			PacketQueue::iterator itor = pendingAckQueue.begin();
+			while ( itor != pendingAckQueue.end() )
+			{
+				if ( itor->sequence < minimum_ack )
+				{
+					itor++;
+					continue;
+				}
+				
+				bool acked = false;
+				
+				if ( itor->sequence == ack )
+				{
+					acked = true;
+				}
+				else if ( itor->sequence < ack )
+				{
+					assert( ack >= 1 );
+					assert( itor->sequence <= ack - 1 );
+					int bit_index = (int) ( ack - 1 - itor->sequence );
+					assert( bit_index >= 0 && bit_index <= 31 );
+					acked = ( ack_bits >> bit_index ) & 1;
+				}
+				
+				if ( acked )
+				{
+					rtt += ( itor->time - rtt ) * 0.01f;
+
+					PacketData data;
+					data.sequence = itor->sequence;
+					data.time = itor->time;
+					data.size = itor->size;
+					ackedQueue.sorted_insert( data );
+
+					acked_packets++;
+					
+					acks.push_back( itor->sequence );
+
+					itor = pendingAckQueue.erase( itor );
+				}
+				else
+					++itor;
+			}
 		}
 		
 		void ProcessAck( unsigned int ack )
@@ -777,7 +825,7 @@ namespace net
 		
 		void UpdateQueues( float deltaTime )
 		{
-			// advance time for queue entries (note: bounded to rtt_maximum * 2 )
+			// advance time for queue entries (time values are small and bounded above)
 			
 			for ( PacketQueue::iterator itor = sentQueue.begin(); itor != sentQueue.end(); itor++ )
 				itor->time += deltaTime;
@@ -916,6 +964,8 @@ namespace net
 					{
 						for ( PacketQueue::iterator itor = begin(); itor != end(); itor++ )
 						{
+							if ( itor->sequence == p.sequence )
+								printf( "duplicate seq %d\n", p.sequence );
 							assert( itor->sequence != p.sequence );
 							if ( itor->sequence > p.sequence )
 							{
