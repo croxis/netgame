@@ -455,9 +455,10 @@ void test_acks()
 	const float DeltaTime = 0.001f;
 	const float TimeOut = 0.1f;
 	const unsigned int PacketCount = 100;
+	const unsigned int MaxSequence = 64;
 	
-	ReliableConnection client( ProtocolId, TimeOut );
-	ReliableConnection server( ProtocolId, TimeOut );
+	ReliableConnection client( ProtocolId, TimeOut, MaxSequence );
+	ReliableConnection server( ProtocolId, TimeOut, MaxSequence );
 	
 	check( client.Start( ClientPort ) );
 	check( server.Start( ServerPort ) );
@@ -573,9 +574,10 @@ void test_ack_bits()
 	const float DeltaTime = 0.001f;
 	const float TimeOut = 0.1f;
 	const unsigned int PacketCount = 100;
+	const unsigned int MaxSequence = 64;
 	
-	ReliableConnection client( ProtocolId, TimeOut );
-	ReliableConnection server( ProtocolId, TimeOut );
+	ReliableConnection client( ProtocolId, TimeOut, MaxSequence );
+	ReliableConnection server( ProtocolId, TimeOut, MaxSequence );
 	
 	check( client.Start( ClientPort ) );
 	check( server.Start( ServerPort ) );
@@ -701,9 +703,10 @@ void test_packet_loss()
 	const float DeltaTime = 0.001f;
 	const float TimeOut = 0.1f;
 	const unsigned int PacketCount = 100;
+	const unsigned int MaxSequence = 64;
 	
-	ReliableConnection client( ProtocolId, TimeOut );
-	ReliableConnection server( ProtocolId, TimeOut );
+	ReliableConnection client( ProtocolId, TimeOut, MaxSequence );
+	ReliableConnection server( ProtocolId, TimeOut, MaxSequence );
 	
 	client.SetPacketLossMask( 1 );
 	server.SetPacketLossMask( 1 );

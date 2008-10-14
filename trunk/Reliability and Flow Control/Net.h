@@ -535,7 +535,7 @@ namespace net
 	{
 	public:
 		
-		ReliableConnection( unsigned int protocolId, float timeout, unsigned int max_sequence = 0xFFFFFFFF )		// todo: 0xFFFFFFFF
+		ReliableConnection( unsigned int protocolId, float timeout, unsigned int max_sequence = 0xFFFFFFFF )
 			: Connection( protocolId, timeout )
 		{
 			ClearData();
