@@ -558,8 +558,8 @@ namespace net
 			if ( local_sequence & packet_loss_mask )
 			{
 				AddSentPacketToQueues( local_sequence, size );
+				UpdateLocalSequence();
 				sent_packets++;
-				local_sequence++;
 				return true;
 			}
 			#endif
@@ -573,8 +573,8 @@ namespace net
  			if ( !Connection::SendPacket( packet, size + header ) )
 				return false;
 			AddSentPacketToQueues( local_sequence, size );
+			UpdateLocalSequence();
 			sent_packets++;
-			local_sequence++;
 			return true;
 		}	
 		
@@ -594,9 +594,8 @@ namespace net
 			unsigned int packet_ack_bits = 0;
 			ReadHeader( packet, packet_sequence, packet_ack, packet_ack_bits );
 			ProcessAcks( packet_ack, packet_ack_bits );
+			UpdateRemoteSequence( packet_sequence );
 			AddReceivedPacketToQueue( packet_sequence, received_bytes - header );
-			if ( packet_sequence > remote_sequence )
-				remote_sequence = packet_sequence;
 			recv_packets++;
 			memcpy( data, packet + header, received_bytes - header );
 			return received_bytes - header;
@@ -710,18 +709,17 @@ namespace net
 		void GenerateAckBits( unsigned int ack, unsigned int & ack_bits )
 		{
 			assert( ack_bits == 0 );
-			const int steps = ack >= 32 ? 32 : ( ack > 0 ? ack : 0 ); 
+			PacketQueue::reverse_iterator itor = receivedQueue.rbegin();
+			const int steps = ack > 32 ? 32 : ack;
 			for ( int i = 0; i < steps; ++i )
 			{
 				unsigned int sequence = ack - 1 - i;
-				// note: this bit could be made faster if we always enforce receive queue to be sorted in sequence order!
-				for ( PacketQueue::iterator itor = receivedQueue.begin(); itor != receivedQueue.end(); ++itor )
+				while ( itor != receivedQueue.rend() && itor->sequence > sequence )
+					itor++;
+				if ( itor != receivedQueue.rend() && itor->sequence == sequence )
 				{
-					if ( itor->sequence == sequence )
-					{
-						ack_bits |= 1 << i;
-						break;
-					}
+					ack_bits |= 1 << i;
+					itor++;
 				}
 			}
 		}
@@ -778,13 +776,57 @@ namespace net
 			}
 		}
 		
+		bool SequenceMoreRecent( unsigned char s1, unsigned char s2 )		// temporary! (255 wrap around test...)
+		{
+			// note: returns true if s1 is a more recent sequence than s2, being aware of wrap around
+			// from http://www.olsr.org/docs/report_html/node104.html
+			return ( s1 > s2 ) && ( s1 - s2 <= 127 ) || ( s2 > s1 ) && ( s2 - s1 > 127 );
+		}		
+		
+		void UpdateLocalSequence()
+		{
+			if ( local_sequence == 255 )
+			{
+				local_sequence = 0;
+				HandleLocalSequenceWrapAround();
+			}
+			else
+				local_sequence++;
+		}
+		
+		void UpdateRemoteSequence( unsigned int packet_sequence )
+		{
+			if ( SequenceMoreRecent( packet_sequence, remote_sequence ) )
+			{
+				if ( remote_sequence > packet_sequence )
+					HandleRemoteSequenceWrapAround();
+				remote_sequence = packet_sequence;
+			}
+		}
+		
+		void HandleRemoteSequenceWrapAround()
+		{
+			printf( "remote sequence wrap around\n" );
+			receivedQueue.clear();
+		}
+		
+		void HandleLocalSequenceWrapAround()
+		{
+			printf( "local sequence wrap around\n" );
+			/*
+			sentQueue.clear();
+			pendingAckQueue.clear();		// note: not correct!
+			ackedQueue.clear();
+			*/
+		}
+
 		void AddSentPacketToQueues( unsigned int sequence, int size )
 		{
 			PacketData p;
 			p.sequence = sequence;
 			p.time = 0.0f;
 			p.size = size;
-			sentQueue.push_back( p );				// note: sent packet and pending ack queue are always in sequence order, by definition
+			sentQueue.push_back( p );				// note: sent packet and pending ack queues are always in sequence order, by definition
 			pendingAckQueue.push_back( p );
 		}
 		
@@ -819,11 +861,17 @@ namespace net
 			
 			while ( sentQueue.size() && sentQueue.front().time > rtt_maximum + epsilon )
 				sentQueue.pop_front();
-				
-			const unsigned int latest_recv_sequence = receivedQueue.back().sequence;
-			const unsigned int minimum_sequence = ( latest_recv_sequence > 33 ) ? latest_recv_sequence - 33 : 0;
-			while ( receivedQueue.size() && receivedQueue.front().sequence < minimum_sequence )
-				receivedQueue.pop_front();
+			
+			if ( receivedQueue.size() )
+			{
+				const unsigned int latest_recv_sequence = receivedQueue.back().sequence;
+				const unsigned int minimum_sequence = ( latest_recv_sequence > 33 ) ? latest_recv_sequence - 33 : 0;
+				// handle standard ack
+				while ( receivedQueue.size() && receivedQueue.front().sequence < minimum_sequence )
+					receivedQueue.pop_front();
+				// handle sequence wrap around
+				while ( receivedQueue.size() )
+			}
 
 			while ( ackedQueue.size() && ackedQueue.front().time > rtt_maximum * 2 - epsilon )
 				ackedQueue.pop_front();
@@ -912,7 +960,6 @@ namespace net
 			unsigned int sequence;			// packet sequence number
 			float time;					    // time offset since packet was sent or received (depending on context)
 			int size;						// packet size in bytes
-			bool operator < ( const PacketData & other ) const { return sequence < other.sequence; }
 		};
 
 		class PacketQueue : public std::list<PacketData>
