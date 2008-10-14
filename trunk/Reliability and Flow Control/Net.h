@@ -535,7 +535,7 @@ namespace net
 	{
 	public:
 		
-		ReliableConnection( unsigned int protocolId, float timeout, unsigned int max_sequence = 0xFF )		// todo: 0xFFFFFFFF
+		ReliableConnection( unsigned int protocolId, float timeout, unsigned int max_sequence = 0xFFFFFFFF )		// todo: 0xFFFFFFFF
 			: Connection( protocolId, timeout )
 		{
 			ClearData();
@@ -853,10 +853,7 @@ namespace net
 				{
 					const unsigned int minimum_wrap_sequence = 255 - ( 33 - latest_recv_sequence );
 					while ( receivedQueue.size() && receivedQueue.front().sequence > 127 && receivedQueue.front().sequence < minimum_wrap_sequence )
-					{
-						printf( "pop wrap seq %d\n", receivedQueue.front().sequence );
 						receivedQueue.pop_front();
-					}
 				}
 				// handle standard ack
 				const unsigned int minimum_sequence = ( latest_recv_sequence > 33 ) ? latest_recv_sequence - 33 : 0;
@@ -982,7 +979,6 @@ namespace net
 					}
 					else
 					{
-						// note: this is not correct... our sequence more recent breaks down left to right starting at low seq!
 						for ( PacketQueue::iterator itor = begin(); itor != end(); itor++ )
 						{
 							assert( itor->sequence != p.sequence );
