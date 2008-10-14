@@ -535,10 +535,11 @@ namespace net
 	{
 	public:
 		
-		ReliableConnection( unsigned int protocolId, float timeout )
+		ReliableConnection( unsigned int protocolId, float timeout, unsigned int max_sequence = 0xFF )		// todo: 0xFFFFFFFF
 			: Connection( protocolId, timeout )
 		{
 			ClearData();
+			this->max_sequence = max_sequence;
 			#ifdef NET_UNIT_TEST
 			packet_loss_mask = 0;
 			#endif
@@ -629,6 +630,11 @@ namespace net
 		{
 			return remote_sequence;
 		}
+		
+		unsigned int GetMaxSequence() const
+		{
+			return max_sequence;
+		}
 				
  		void GetAcks( unsigned int ** acks, int & count )
 		{
@@ -711,6 +717,7 @@ namespace net
 			assert( ack_bits == 0 );
 			PacketQueue::reverse_iterator itor = receivedQueue.rbegin();
 			const int steps = ack > 32 ? 32 : ack;
+			// todo: need to handle sequence wrap!
 			for ( int i = 0; i < steps; ++i )
 			{
 				unsigned int sequence = ack - 1 - i;
@@ -730,6 +737,8 @@ namespace net
 				return;
 				
 			const unsigned int minimum_ack = ack > 32 ? ack - 32 : 0;
+			
+			// todo: need to handle sequence wrap (!)
 			
 			PacketQueue::iterator itor = pendingAckQueue.begin();
 			while ( itor != pendingAckQueue.end() )
@@ -763,7 +772,7 @@ namespace net
 					data.sequence = itor->sequence;
 					data.time = itor->time;
 					data.size = itor->size;
-					ackedQueue.sorted_insert( data );
+					ackedQueue.sorted_insert( data, max_sequence );
 
 					acked_packets++;
 					
@@ -776,50 +785,24 @@ namespace net
 			}
 		}
 		
-		bool SequenceMoreRecent( unsigned char s1, unsigned char s2 )		// temporary! (255 wrap around test...)
+		bool SequenceMoreRecent( unsigned int s1, unsigned int s2 )
 		{
-			// note: returns true if s1 is a more recent sequence than s2, being aware of wrap around
-			// from http://www.olsr.org/docs/report_html/node104.html
-			return ( s1 > s2 ) && ( s1 - s2 <= 127 ) || ( s2 > s1 ) && ( s2 - s1 > 127 );
+			return ( s1 > s2 ) && ( s1 - s2 <= max_sequence/2 ) || ( s2 > s1 ) && ( s2 - s1 > max_sequence/2 );
 		}		
 		
 		void UpdateLocalSequence()
 		{
-			if ( local_sequence == 255 )
-			{
+			local_sequence++;
+			if ( local_sequence > max_sequence )
 				local_sequence = 0;
-				HandleLocalSequenceWrapAround();
-			}
-			else
-				local_sequence++;
 		}
 		
 		void UpdateRemoteSequence( unsigned int packet_sequence )
 		{
 			if ( SequenceMoreRecent( packet_sequence, remote_sequence ) )
-			{
-				if ( remote_sequence > packet_sequence )
-					HandleRemoteSequenceWrapAround();
 				remote_sequence = packet_sequence;
-			}
 		}
 		
-		void HandleRemoteSequenceWrapAround()
-		{
-			printf( "remote sequence wrap around\n" );
-			receivedQueue.clear();
-		}
-		
-		void HandleLocalSequenceWrapAround()
-		{
-			printf( "local sequence wrap around\n" );
-			/*
-			sentQueue.clear();
-			pendingAckQueue.clear();		// note: not correct!
-			ackedQueue.clear();
-			*/
-		}
-
 		void AddSentPacketToQueues( unsigned int sequence, int size )
 		{
 			PacketData p;
@@ -836,7 +819,7 @@ namespace net
 			p.sequence = sequence;
 			p.time = 0.0f;
 			p.size = size;
-			receivedQueue.sorted_insert( p );
+			receivedQueue.sorted_insert( p, max_sequence );
 		}
 		
 		void UpdateQueues( float deltaTime )
@@ -865,12 +848,20 @@ namespace net
 			if ( receivedQueue.size() )
 			{
 				const unsigned int latest_recv_sequence = receivedQueue.back().sequence;
-				const unsigned int minimum_sequence = ( latest_recv_sequence > 33 ) ? latest_recv_sequence - 33 : 0;
+				// handle sequence wrap around
+				if ( latest_recv_sequence < 33 )
+				{
+					const unsigned int minimum_wrap_sequence = 255 - ( 33 - latest_recv_sequence );
+					while ( receivedQueue.size() && receivedQueue.front().sequence > 127 && receivedQueue.front().sequence < minimum_wrap_sequence )
+					{
+						printf( "pop wrap seq %d\n", receivedQueue.front().sequence );
+						receivedQueue.pop_front();
+					}
+				}
 				// handle standard ack
+				const unsigned int minimum_sequence = ( latest_recv_sequence > 33 ) ? latest_recv_sequence - 33 : 0;
 				while ( receivedQueue.size() && receivedQueue.front().sequence < minimum_sequence )
 					receivedQueue.pop_front();
-				// handle sequence wrap around
-				while ( receivedQueue.size() )
 			}
 
 			while ( ackedQueue.size() && ackedQueue.front().time > rtt_maximum * 2 - epsilon )
@@ -949,6 +940,8 @@ namespace net
 		float rtt;							// estimated round trip time
 		float rtt_maximum;					// maximum expected round trip time
 		
+		unsigned int max_sequence;			// maximum sequence number, wraps around to zero past this (modular arithmetic)
+		
 		#ifdef NET_UNIT_TEST
 		unsigned int packet_loss_mask;		// mask sequence number, if non-zero, drop packet - for unit test only
 		#endif
@@ -965,7 +958,13 @@ namespace net
 		class PacketQueue : public std::list<PacketData>
 		{
 		public:
-			void sorted_insert( const PacketData & p )
+			
+			bool sequence_more_recent( unsigned int s1, unsigned int s2, unsigned int max_sequence )
+			{
+				return ( s1 > s2 ) && ( s1 - s2 <= max_sequence/2 ) || ( s2 > s1 ) && ( s2 - s1 > max_sequence/2 );
+			}		
+			
+			void sorted_insert( const PacketData & p, unsigned int max_sequence )
 			{
 				if ( empty() )
 				{
@@ -973,20 +972,21 @@ namespace net
 				}
 				else
 				{
-					if ( p.sequence < this->front().sequence )
+					if ( !sequence_more_recent( p.sequence, front().sequence, max_sequence ) )
 					{
 						push_front( p );
 					}
-					else if ( p.sequence > this->back().sequence )
+					else if ( sequence_more_recent( p.sequence, back().sequence, max_sequence ) )
 					{
 						push_back( p );
 					}
 					else
 					{
+						// note: this is not correct... our sequence more recent breaks down left to right starting at low seq!
 						for ( PacketQueue::iterator itor = begin(); itor != end(); itor++ )
 						{
 							assert( itor->sequence != p.sequence );
-							if ( itor->sequence > p.sequence )
+							if ( sequence_more_recent( itor->sequence, p.sequence, max_sequence ) )
 							{
 								insert( itor, p );
 								break;
