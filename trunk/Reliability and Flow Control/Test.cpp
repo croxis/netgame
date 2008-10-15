@@ -96,11 +96,36 @@ void test_reliability_system()
 	check( ReliabilitySystem::bit_index_for_sequence( 254, 1, MaximumSequence ) == 2 );
 	check( ReliabilitySystem::bit_index_for_sequence( 254, 2, MaximumSequence ) == 3 );
 	
-	printf( "check generate ack\n");
-	// ...
-	
-	printf( "check process ack\n" );
-	// ...	
+	printf( "check generate ack bits\n");
+	PacketQueue packetQueue;
+	for ( int i = 0; i < 32; ++i )
+	{
+		PacketData data;
+		data.sequence = i;
+		packetQueue.insert_sorted( data, MaximumSequence );
+		packetQueue.verify_sorted( MaximumSequence );
+	}
+	check( ReliabilitySystem::generate_ack_bits( 32, packetQueue, MaximumSequence ) == 0xFFFFFFFF );
+	check( ReliabilitySystem::generate_ack_bits( 31, packetQueue, MaximumSequence ) == 0x7FFFFFFF );
+	check( ReliabilitySystem::generate_ack_bits( 33, packetQueue, MaximumSequence ) == 0xFFFFFFFE );
+	check( ReliabilitySystem::generate_ack_bits( 16, packetQueue, MaximumSequence ) == 0x0000FFFF );
+	check( ReliabilitySystem::generate_ack_bits( 48, packetQueue, MaximumSequence ) == 0xFFFF0000 );
+
+	printf( "check generate ack bits with wrap\n");
+	packetQueue.clear();
+	for ( int i = 255 - 31; i <= 255; ++i )
+	{
+		PacketData data;
+		data.sequence = i;
+		packetQueue.insert_sorted( data, MaximumSequence );
+		packetQueue.verify_sorted( MaximumSequence );
+	}
+	check( packetQueue.size() == 32 );
+	check( ReliabilitySystem::generate_ack_bits( 0, packetQueue, MaximumSequence ) == 0xFFFFFFFF );
+	check( ReliabilitySystem::generate_ack_bits( 255, packetQueue, MaximumSequence ) == 0x7FFFFFFF );
+	check( ReliabilitySystem::generate_ack_bits( 1, packetQueue, MaximumSequence ) == 0xFFFFFFFE );
+	check( ReliabilitySystem::generate_ack_bits( 240, packetQueue, MaximumSequence ) == 0x0000FFFF );
+	check( ReliabilitySystem::generate_ack_bits( 16, packetQueue, MaximumSequence ) == 0xFFFF0000 );
 }
 
 void test_join()

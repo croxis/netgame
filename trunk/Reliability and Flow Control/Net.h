@@ -701,35 +701,30 @@ namespace net
 		{
 			assert( sequence != ack );
 			assert( !sequence_more_recent( sequence, ack, max_sequence ) );
-			int bit_index;
 			if ( sequence > ack )
 			{
 				assert( ack < 33 );
 				assert( max_sequence >= sequence );
-				bit_index = ack + ( max_sequence - sequence );
-				assert( bit_index >= 0 );
+ 				return ack + ( max_sequence - sequence );
 			}
 			else
 			{
 				assert( ack >= 1 );
 				assert( sequence <= ack - 1 );
-				bit_index = ack - 1 - sequence;
-				assert( bit_index >= 0 );
+ 				return ack - 1 - sequence;
 			}
-			return bit_index;
 		}
 		
-		static unsigned int generate_ack_bits( unsigned int ack, PacketQueue & received_queue, unsigned int max_sequence )
+		static unsigned int generate_ack_bits( unsigned int ack, const PacketQueue & received_queue, unsigned int max_sequence )
 		{
 			unsigned int ack_bits = 0;
-			for ( PacketQueue::iterator itor = received_queue.begin(); itor != received_queue.end(); itor++  )
+			for ( PacketQueue::const_iterator itor = received_queue.begin(); itor != received_queue.end(); itor++ )
 			{
-				if ( itor->sequence == ack || !sequence_more_recent( itor->sequence, ack, max_sequence ) )
+				if ( itor->sequence == ack || sequence_more_recent( itor->sequence, ack, max_sequence ) )
 					break;
 				int bit_index = bit_index_for_sequence( itor->sequence, ack, max_sequence );
 				if ( bit_index <= 31 )
 					ack_bits |= 1 << bit_index;
-				++itor;
 			}
 			return ack_bits;
 		}
