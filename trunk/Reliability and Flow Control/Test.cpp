@@ -22,6 +22,63 @@ using namespace net;
 #define check(n) if ( !n ) { printf( "check failed\n" ); exit(1); }
 #endif
 
+void test_packet_queue()
+{
+	printf( "-----------------------------------------------------\n" );
+	printf( "test packet queue\n" );
+	printf( "-----------------------------------------------------\n" );
+
+	const unsigned int MaximumSequence = 255;
+
+	PacketQueue packetQueue;
+	
+	printf( "check insert back\n" );
+	for ( int i = 0; i < 100; ++i )
+	{
+		PacketData data;
+		data.sequence = i;
+		packetQueue.insert_sorted( data, MaximumSequence );
+		packetQueue.verify_sorted( MaximumSequence );
+	}
+		
+	printf( "check insert front\n" );
+	packetQueue.clear();
+	for ( int i = 100; i < 0; ++i )
+	{
+		PacketData data;
+		data.sequence = i;
+		packetQueue.insert_sorted( data, MaximumSequence );
+		packetQueue.verify_sorted( MaximumSequence );
+	}
+	
+	printf( "check insert random\n" );
+	packetQueue.clear();
+	for ( int i = 100; i < 0; ++i )
+	{
+		PacketData data;
+		data.sequence = rand() & 0xFF;
+		packetQueue.insert_sorted( data, MaximumSequence );
+		packetQueue.verify_sorted( MaximumSequence );
+	}
+
+	printf( "check insert wrap around\n" );
+	packetQueue.clear();
+	for ( int i = 200; i <= 255; ++i )
+	{
+		PacketData data;
+		data.sequence = i;
+		packetQueue.insert_sorted( data, MaximumSequence );
+		packetQueue.verify_sorted( MaximumSequence );
+	}
+	for ( int i = 0; i <= 50; ++i )
+	{
+		PacketData data;
+		data.sequence = i;
+		packetQueue.insert_sorted( data, MaximumSequence );
+		packetQueue.verify_sorted( MaximumSequence );
+	}
+}
+
 void test_join()
 {
 	printf( "-----------------------------------------------------\n" );
@@ -834,8 +891,8 @@ void test_sequence_wrap_around()
 	const int ProtocolId = 0x11112222;
 	const float DeltaTime = 0.001f;
 	const float TimeOut = 0.1f;
-	const unsigned int PacketCount = 100;
-	const unsigned int MaxSequence = 31;		// [0,31]
+	const unsigned int PacketCount = 128;
+	const unsigned int MaxSequence = 50;		// [0,49]
 
 	ReliableConnection client( ProtocolId, TimeOut, MaxSequence );
 	ReliableConnection server( ProtocolId, TimeOut, MaxSequence );
@@ -942,6 +999,9 @@ void test_sequence_wrap_around()
 
 void tests()
 {
+	test_packet_queue();
+
+	/*
 	test_join();
 	test_join_timeout();
 	test_join_busy();
@@ -951,6 +1011,7 @@ void tests()
 	test_ack_bits();
 	test_packet_loss();
 	test_sequence_wrap_around();
+	*/
 
 	printf( "-----------------------------------------------------\n" );
 	printf( "passed!\n" );

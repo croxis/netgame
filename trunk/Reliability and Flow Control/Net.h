@@ -528,6 +528,211 @@ namespace net
 		float timeoutAccumulator;
 		Address address;
 	};
+	
+	// packet queue to store information about sent and received packets sorted in sequence order
+	//  + we define ordering using the "sequence_more_recent" function, this works provided there is a large gap when sequence wrap occurs
+	
+	struct PacketData
+	{
+		unsigned int sequence;			// packet sequence number
+		float time;					    // time offset since packet was sent or received (depending on context)
+		int size;						// packet size in bytes
+	};
+
+	inline bool sequence_more_recent( unsigned int s1, unsigned int s2, unsigned int max_sequence )
+	{
+		return ( s1 > s2 ) && ( s1 - s2 <= max_sequence/2 ) || ( s2 > s1 ) && ( s2 - s1 > max_sequence/2 );
+	}		
+	
+	class PacketQueue : public std::list<PacketData>
+	{
+	public:
+		
+		bool exists( unsigned int sequence )
+		{
+			for ( iterator itor = begin(); itor != end(); ++itor )
+				if ( itor->sequence == sequence )
+					return true;
+			return false;
+		}
+		
+		void insert_sorted( const PacketData & p, unsigned int max_sequence )
+		{
+			if ( empty() )
+			{
+				push_back( p );
+			}
+			else
+			{
+				if ( !sequence_more_recent( p.sequence, front().sequence, max_sequence ) )
+				{
+					push_front( p );
+				}
+				else if ( sequence_more_recent( p.sequence, back().sequence, max_sequence ) )
+				{
+					push_back( p );
+				}
+				else
+				{
+					for ( PacketQueue::iterator itor = begin(); itor != end(); itor++ )
+					{
+						assert( itor->sequence != p.sequence );
+						if ( sequence_more_recent( itor->sequence, p.sequence, max_sequence ) )
+						{
+							insert( itor, p );
+							break;
+						}
+					}
+				}
+			}
+		}
+		
+		void verify_sorted( unsigned int max_sequence )
+		{
+			PacketQueue::iterator prev = end();
+			for ( PacketQueue::iterator itor = begin(); itor != end(); itor++ )
+			{
+				assert( itor->sequence <= max_sequence );
+				if ( prev != end() )
+				{
+					assert( sequence_more_recent( itor->sequence, prev->sequence, max_sequence ) );
+					prev = itor;
+				}
+			}
+		}
+	};
+
+	// reliability system to support reliable connection
+	//  + manages sent, received, pending ack and acked packet queues
+	//  + separated out from reliable connection because it is quite complex and i want to unit test it!
+	
+	class ReliabilitySystem
+	{
+	public:
+		
+		ReliabilitySystem( unsigned int max_sequence = 0xFFFFFFFF, float rtt_maximum = 1.0f )
+		{
+			this->rtt_maximum = rtt_maximum;
+			this->max_sequence = max_sequence;
+			Reset();
+		}
+		
+		void Reset()
+		{
+			local_sequence = 0;
+			remote_sequence = 0;
+			sentQueue.clear();
+			receivedQueue.clear();
+			pendingAckQueue.clear();
+			ackedQueue.clear();
+		}
+		
+		static bool sequence_more_recent( unsigned int s1, unsigned int s2, unsigned int max_sequence )
+		{
+			return ( s1 > s2 ) && ( s1 - s2 <= max_sequence/2 ) || ( s2 > s1 ) && ( s2 - s1 > max_sequence/2 );
+		}
+		
+		void PacketSent( unsigned int sequence, int size )
+		{
+			assert( sequence_more_recent( sequence, local_sequence, max_sequence ) );
+			assert( !sentQueue.exists( sequence ) );
+			assert( !pendingAckQueue.exists( sequence ) );
+			PacketData data;
+			data.sequence = sequence;
+			data.time = 0.0f;
+			data.size = size;
+			sentQueue.push_back( data );
+			pendingAckQueue.push_back( data );
+			local_sequence = sequence;
+		}
+		
+		void PacketReceived( unsigned int sequence, int size )
+		{
+			if ( receivedQueue.exists( sequence ) )
+				return;
+			PacketData data;
+			data.sequence = sequence;
+			data.time = 0.0f;
+			data.size = size;
+			sentQueue.push_back( data );
+			if ( sequence_more_recent( sequence, remote_sequence, max_sequence ) )
+				remote_sequence = sequence;
+		}
+
+		void GenerateAck( unsigned int & ack, unsigned int & ack_bits )
+		{
+			// ...
+		}
+		
+		void ProcessAck( unsigned int ack, unsigned int ack_bits )
+		{
+			// process first ack
+			// process ack bits
+		}
+		
+		void Update( float deltaTime )
+		{
+			// advance time for queue entries (time values are small and bounded above)
+			
+			for ( PacketQueue::iterator itor = sentQueue.begin(); itor != sentQueue.end(); itor++ )
+				itor->time += deltaTime;
+
+			for ( PacketQueue::iterator itor = receivedQueue.begin(); itor != receivedQueue.end(); itor++ )
+				itor->time += deltaTime;
+
+			for ( PacketQueue::iterator itor = pendingAckQueue.begin(); itor != pendingAckQueue.end(); itor++ )
+				itor->time += deltaTime;
+
+			for ( PacketQueue::iterator itor = ackedQueue.begin(); itor != ackedQueue.end(); itor++ )
+				itor->time += deltaTime;
+			
+			// update queues
+			
+			const float epsilon = 0.001f;
+			
+			while ( sentQueue.size() && sentQueue.front().time > rtt_maximum + epsilon )
+				sentQueue.pop_front();
+			
+			if ( receivedQueue.size() )
+			{
+				const unsigned int latest_sequence = receivedQueue.back().sequence;
+				const unsigned int minimum_sequence = latest_sequence >= 34 ? ( latest_sequence - 34 ) : max_sequence - ( 34 - latest_sequence );
+				while ( receivedQueue.size() && !sequence_more_recent( receivedQueue.front().sequence, minimum_sequence, max_sequence ) )
+					receivedQueue.pop_front();
+			}
+
+			while ( ackedQueue.size() && ackedQueue.front().time > rtt_maximum * 2 - epsilon )
+				ackedQueue.pop_front();
+
+			while ( pendingAckQueue.size() && pendingAckQueue.front().time > rtt_maximum + epsilon )
+			{
+				pendingAckQueue.pop_front();
+//				lost_packets++;
+			}
+		}
+		
+		void Validate()
+		{
+			sentQueue.verify_sorted( max_sequence );
+			receivedQueue.verify_sorted( max_sequence );
+			pendingAckQueue.verify_sorted( max_sequence );
+			ackedQueue.verify_sorted( max_sequence );
+			// todo: validate properties of queues (ranges rtt_maximum, sequence_min etc...)
+		}
+		
+	private:
+		
+		unsigned int max_sequence;			// maximum sequence value before wrap around (used to test sequence wrap at low # values)
+		float rtt_maximum;					// maximum expected round trip time (1.0 seconds)
+		
+		unsigned int local_sequence;		// local sequence number for most recently sent packet
+		unsigned int remote_sequence;		// remote sequence number for most recently received packet
+		
+		PacketQueue sentQueue;				// sent packets used to calculate sent bandwidth (kept until rtt_maximum)
+		PacketQueue pendingAckQueue;		// sent packets which have not been acked yet (kept until rtt_maximum * 2 )
+		PacketQueue receivedQueue;			// received packets for determining acks to send (kept up to most recent recv sequence - 32)
+		PacketQueue ackedQueue;				// acked packets (kept until rtt_maximum * 2)
+	};
 
 	// connection with reliability (seq/ack)
 
@@ -756,7 +961,7 @@ namespace net
 					data.sequence = itor->sequence;
 					data.time = itor->time;
 					data.size = itor->size;
-					ackedQueue.sorted_insert( data, max_sequence );
+					ackedQueue.insert_sorted( data, max_sequence );
 
 					acked_packets++;
 					
@@ -830,7 +1035,7 @@ namespace net
 			p.sequence = sequence;
 			p.time = 0.0f;
 			p.size = size;
-			receivedQueue.sorted_insert( p, max_sequence );
+			receivedQueue.insert_sorted( p, max_sequence );
 		}
 		
 		void UpdateQueues( float deltaTime )
@@ -964,7 +1169,7 @@ namespace net
 				return ( s1 > s2 ) && ( s1 - s2 <= max_sequence/2 ) || ( s2 > s1 ) && ( s2 - s1 > max_sequence/2 );
 			}		
 			
-			void sorted_insert( const PacketData & p, unsigned int max_sequence )
+			void insert_sorted( const PacketData & p, unsigned int max_sequence )
 			{
 				if ( empty() )
 				{
