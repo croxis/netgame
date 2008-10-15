@@ -610,7 +610,7 @@ namespace net
 	{
 	public:
 		
-		ReliabilitySystem( unsigned int max_sequence = 0xFFFFFFFF, float rtt_maximum = 1.0f )
+		ReliabilitySystem( unsigned int max_sequence = 0xFFFFFFFF )
 		{
 			this->rtt_maximum = rtt_maximum;
 			this->max_sequence = max_sequence;
@@ -625,6 +625,14 @@ namespace net
 			receivedQueue.clear();
 			pendingAckQueue.clear();
 			ackedQueue.clear();
+			sent_packets = 0;
+			recv_packets = 0;
+			lost_packets = 0;
+			acked_packets = 0;
+			sent_bandwidth = 0.0f;
+			acked_bandwidth = 0.0f;
+			rtt = 0.0f;
+			rtt_maximum = 1.0f;
 		}
 		
 		static bool sequence_more_recent( unsigned int s1, unsigned int s2, unsigned int max_sequence )
@@ -672,8 +680,23 @@ namespace net
 		
 		void Update( float deltaTime )
 		{
-			// advance time for queue entries (time values are small and bounded above)
-			
+			AdvanceQueueTime( deltaTime );
+			UpdateQueues();
+			UpdateStats();
+		}
+		
+		void Validate()
+		{
+			sentQueue.verify_sorted( max_sequence );
+			receivedQueue.verify_sorted( max_sequence );
+			pendingAckQueue.verify_sorted( max_sequence );
+			ackedQueue.verify_sorted( max_sequence );
+		}
+		
+	protected:
+		
+		void AdvanceQueueTime( float deltaTime )
+		{
 			for ( PacketQueue::iterator itor = sentQueue.begin(); itor != sentQueue.end(); itor++ )
 				itor->time += deltaTime;
 
@@ -685,14 +708,15 @@ namespace net
 
 			for ( PacketQueue::iterator itor = ackedQueue.begin(); itor != ackedQueue.end(); itor++ )
 				itor->time += deltaTime;
-			
-			// update queues
-			
+		}
+		
+		void UpdateQueues()
+		{
 			const float epsilon = 0.001f;
-			
+
 			while ( sentQueue.size() && sentQueue.front().time > rtt_maximum + epsilon )
 				sentQueue.pop_front();
-			
+
 			if ( receivedQueue.size() )
 			{
 				const unsigned int latest_sequence = receivedQueue.back().sequence;
@@ -707,27 +731,46 @@ namespace net
 			while ( pendingAckQueue.size() && pendingAckQueue.front().time > rtt_maximum + epsilon )
 			{
 				pendingAckQueue.pop_front();
-//				lost_packets++;
+				lost_packets++;
 			}
 		}
 		
-		void Validate()
+		void UpdateStats()
 		{
-			sentQueue.verify_sorted( max_sequence );
-			receivedQueue.verify_sorted( max_sequence );
-			pendingAckQueue.verify_sorted( max_sequence );
-			ackedQueue.verify_sorted( max_sequence );
-			// todo: validate properties of queues (ranges rtt_maximum, sequence_min etc...)
+			assert( rtt_maximum == 1.0f );
+			int sent_bytes_per_second = 0;
+			for ( PacketQueue::iterator itor = sentQueue.begin(); itor != sentQueue.end(); ++itor )
+				sent_bytes_per_second += itor->size;
+			int acked_packets_per_second = 0;
+			int acked_bytes_per_second = 0;
+			for ( PacketQueue::iterator itor = ackedQueue.begin(); itor != ackedQueue.end(); ++itor )
+			{
+				if ( itor->time >= rtt_maximum )
+				{
+					acked_packets_per_second++;
+					acked_bytes_per_second += itor->size;
+				}
+			}
+			sent_bandwidth = sent_bytes_per_second * ( 8 / 1000.0f );
+			acked_bandwidth = acked_bytes_per_second * ( 8 / 1000.0f );
 		}
 		
 	private:
 		
 		unsigned int max_sequence;			// maximum sequence value before wrap around (used to test sequence wrap at low # values)
-		float rtt_maximum;					// maximum expected round trip time (1.0 seconds)
-		
 		unsigned int local_sequence;		// local sequence number for most recently sent packet
 		unsigned int remote_sequence;		// remote sequence number for most recently received packet
 		
+		unsigned int sent_packets;			// total number of packets sent
+		unsigned int recv_packets;			// total number of packets received
+		unsigned int lost_packets;			// total number of packets lost
+		unsigned int acked_packets;			// total number of packets acked
+
+		float sent_bandwidth;				// approximate sent bandwidth over the last second
+		float acked_bandwidth;				// approximate acked bandwidth over the last second
+		float rtt;							// estimated round trip time
+		float rtt_maximum;					// maximum expected round trip time (hard coded to one second for the moment)
+
 		PacketQueue sentQueue;				// sent packets used to calculate sent bandwidth (kept until rtt_maximum)
 		PacketQueue pendingAckQueue;		// sent packets which have not been acked yet (kept until rtt_maximum * 2 )
 		PacketQueue receivedQueue;			// received packets for determining acks to send (kept up to most recent recv sequence - 32)
@@ -1143,7 +1186,7 @@ namespace net
 		float sent_bandwidth;				// approximate sent bandwidth over the last second
 		float acked_bandwidth;				// approximate acked bandwidth over the last second
 		float rtt;							// estimated round trip time
-		float rtt_maximum;					// maximum expected round trip time
+		float rtt_maximum;					// maximum expected round trip time (hard coded to one second for the moment)
 		
 		unsigned int max_sequence;			// maximum sequence number, wraps around to zero past this (modular arithmetic)
 		
