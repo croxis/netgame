@@ -637,6 +637,12 @@ namespace net
 		
 		void PacketSent( int size )
 		{
+			if ( sentQueue.exists( local_sequence ) )
+			{
+				printf( "local sequence %d exists\n", local_sequence );				
+				for ( PacketQueue::iterator itor = sentQueue.begin(); itor != sentQueue.end(); ++itor )
+					printf( " + %d\n", itor->sequence );
+			}
 			assert( !sentQueue.exists( local_sequence ) );
 			assert( !pendingAckQueue.exists( local_sequence ) );
 			PacketData data;

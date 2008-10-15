@@ -321,7 +321,7 @@ void test_join()
 	const int ClientPort = 30001;
 	const int ProtocolId = 0x11112222;
 	const float DeltaTime = 0.001f;
-	const float TimeOut = 0.1f;
+	const float TimeOut = 1.0f;
 	
 	ReliableConnection client( ProtocolId, TimeOut );
 	ReliableConnection server( ProtocolId, TimeOut );
@@ -364,8 +364,6 @@ void test_join()
 		
 		client.Update( DeltaTime );
 		server.Update( DeltaTime );
-		
-		wait( DeltaTime );
 	}
 	
 	check( client.IsConnected() );
@@ -407,8 +405,6 @@ void test_join_timeout()
 		}
 		
 		client.Update( DeltaTime );
-		
-		wait( DeltaTime );
 	}
 	
 	check( !client.IsConnected() );
@@ -470,8 +466,6 @@ void test_join_busy()
 		
 		client.Update( DeltaTime );
 		server.Update( DeltaTime );
-		
-		wait( DeltaTime );
 	}
 	
 	check( client.IsConnected() );
@@ -524,8 +518,6 @@ void test_join_busy()
 		client.Update( DeltaTime );
 		server.Update( DeltaTime );
 		busy.Update( DeltaTime );
-		
-		wait( DeltaTime );
 	}
 
 	check( client.IsConnected() );
@@ -589,8 +581,6 @@ void test_rejoin()
 		
 		client.Update( DeltaTime );
 		server.Update( DeltaTime );
-		
-		wait( DeltaTime );
 	}
 	
 	check( client.IsConnected() );
@@ -618,8 +608,6 @@ void test_rejoin()
 
 		client.Update( DeltaTime );
 		server.Update( DeltaTime );
-
-		wait( DeltaTime );
 	}
 	
 	check( !client.IsConnected() );
@@ -661,8 +649,6 @@ void test_rejoin()
 		
 		client.Update( DeltaTime );
 		server.Update( DeltaTime );
-		
-		wait( DeltaTime );
 	}
 	
 	check( client.IsConnected() );
@@ -724,8 +710,6 @@ void test_payload()
 		
 		client.Update( DeltaTime );
 		server.Update( DeltaTime );
-		
-		wait( DeltaTime );
 	}
 	
 	check( client.IsConnected() );
@@ -838,8 +822,6 @@ void test_acks()
 		
 		client.Update( DeltaTime );
 		server.Update( DeltaTime );
-		
-		wait( DeltaTime );
 	}
 	
 	check( client.IsConnected() );
@@ -920,8 +902,6 @@ void test_ack_bits()
 			}
 
 			client.Update( DeltaTime * 0.1f );
-
-			wait( DeltaTime * 0.1f );
 		}
 		
 		server.SendPacket( packet, sizeof(packet) );
@@ -1048,8 +1028,6 @@ void test_packet_loss()
 			}
 
 			client.Update( DeltaTime * 0.1f );
-
-			wait( DeltaTime * 0.1f );
 		}
 		
 		server.SendPacket( packet, sizeof(packet) );
@@ -1112,10 +1090,10 @@ void test_sequence_wrap_around()
 	const int ServerPort = 30000;
 	const int ClientPort = 30001;
 	const int ProtocolId = 0x11112222;
-	const float DeltaTime = 0.001f;
-	const float TimeOut = 0.1f;
-	const unsigned int PacketCount = 128;
-	const unsigned int MaxSequence = 50;		// [0,49]
+	const float DeltaTime = 0.05f;
+	const float TimeOut = 1000.0f;
+	const unsigned int PacketCount = 256;
+	const unsigned int MaxSequence = 31;		// [0,31]
 
 	ReliableConnection client( ProtocolId, TimeOut, MaxSequence );
 	ReliableConnection server( ProtocolId, TimeOut, MaxSequence );
@@ -1182,7 +1160,6 @@ void test_sequence_wrap_around()
 			unsigned int ack = acks[i];
 			check( ack <= MaxSequence );
 			clientAckCount[ack] += 1;
-//			printf( "client ack %d (%d)\n", ack, clientAckCount[ack] );
 		}
 
 		server.GetReliabilitySystem().GetAcks( &acks, ack_count );
@@ -1192,7 +1169,6 @@ void test_sequence_wrap_around()
 			unsigned int ack = acks[i];
 			check( ack <= MaxSequence );
 			serverAckCount[ack]++;
-//			printf( "server ack %d (%d)\n", ack, serverAckCount[ack] );
 		}
 
 		unsigned int totalClientAcks = 0;
@@ -1202,15 +1178,12 @@ void test_sequence_wrap_around()
  			totalClientAcks += clientAckCount[i];
  			totalServerAcks += serverAckCount[i];
 		}
-//		printf( "client ack count = %d, server ack count = %d\n", totalClientAcks, totalServerAcks );
 		allPacketsAcked = totalClientAcks >= PacketCount && totalServerAcks >= PacketCount;
 
 		// note: test above is not sufficient to check if we have actually received 100% acks ...
 
 		client.Update( DeltaTime );
 		server.Update( DeltaTime );
-
-		wait( DeltaTime );
 	}
 
 	check( client.IsConnected() );
