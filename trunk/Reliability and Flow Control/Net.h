@@ -714,20 +714,16 @@ namespace net
 		
 		void GenerateAckBits( unsigned int ack, unsigned int & ack_bits )
 		{
-			assert( ack_bits == 0 );
 			PacketQueue::reverse_iterator itor = receivedQueue.rbegin();
-			const int steps = ack > 32 ? 32 : ack;
-			// todo: need to handle sequence wrap!
-			for ( int i = 0; i < steps; ++i )
+			while ( itor != receivedQueue.rend() )
 			{
-				unsigned int sequence = ack - 1 - i;
-				while ( itor != receivedQueue.rend() && itor->sequence > sequence )
-					itor++;
-				if ( itor != receivedQueue.rend() && itor->sequence == sequence )
+				if ( itor->sequence != ack && !SequenceIsMoreRecent( itor->sequence, ack ) )
 				{
-					ack_bits |= 1 << i;
-					itor++;
+					int bit_index = GetBitIndexForSequence( itor->sequence, ack );
+					if ( bit_index <= 31 )
+						ack_bits |= 1 << bit_index;
 				}
+				++itor;
 			}
 		}
 		
@@ -736,32 +732,20 @@ namespace net
 			if ( pendingAckQueue.empty() )
 				return;
 				
-			const unsigned int minimum_ack = ack > 32 ? ack - 32 : 0;
-			
-			// todo: need to handle sequence wrap (!)
-			
 			PacketQueue::iterator itor = pendingAckQueue.begin();
 			while ( itor != pendingAckQueue.end() )
 			{
-				if ( itor->sequence < minimum_ack )
-				{
-					itor++;
-					continue;
-				}
-				
 				bool acked = false;
 				
 				if ( itor->sequence == ack )
 				{
 					acked = true;
 				}
-				else if ( itor->sequence < ack )
+				else if ( !SequenceIsMoreRecent( itor->sequence, ack ) )
 				{
-					assert( ack >= 1 );
-					assert( itor->sequence <= ack - 1 );
-					int bit_index = (int) ( ack - 1 - itor->sequence );
-					assert( bit_index >= 0 && bit_index <= 31 );
-					acked = ( ack_bits >> bit_index ) & 1;
+					int bit_index = GetBitIndexForSequence( itor->sequence, ack );
+					if ( bit_index <= 31 )
+						acked = ( ack_bits >> bit_index ) & 1;
 				}
 				
 				if ( acked )
@@ -784,9 +768,36 @@ namespace net
 					++itor;
 			}
 		}
-		
-		bool SequenceMoreRecent( unsigned int s1, unsigned int s2 )
+
+		int GetBitIndexForSequence( unsigned int sequence, unsigned int ack )
 		{
+			// finds the bit index for a sequence before ack:
+			//  + easy case: if ack is 100 then sequence # 90 is bit index 9
+			//  + hard case: if ack is 10, then sequence # of max_sequence - 5 is bit index 14 (wrap around...)
+			assert( sequence != ack );
+			assert( !SequenceIsMoreRecent( sequence, ack ) );
+			int bit_index;
+			if ( sequence > ack )
+			{
+				// note: sequence wrap around case
+				assert( ack < 33 );
+				assert( max_sequence >= sequence );
+				bit_index = ack + ( max_sequence - sequence );
+				assert( bit_index >= 0 );
+			}
+			else
+			{
+				assert( ack >= 1 );
+				assert( sequence <= ack - 1 );
+				bit_index = ack - 1 - sequence;
+				assert( bit_index >= 0 );
+			}
+			return bit_index;
+		}
+		
+		bool SequenceIsMoreRecent( unsigned int s1, unsigned int s2 )
+		{
+			// note: returns true if s1 is a more recent sequence number than s2, taking into account sequence # wrapping
 			return ( s1 > s2 ) && ( s1 - s2 <= max_sequence/2 ) || ( s2 > s1 ) && ( s2 - s1 > max_sequence/2 );
 		}		
 		
@@ -799,7 +810,7 @@ namespace net
 		
 		void UpdateRemoteSequence( unsigned int packet_sequence )
 		{
-			if ( SequenceMoreRecent( packet_sequence, remote_sequence ) )
+			if ( SequenceIsMoreRecent( packet_sequence, remote_sequence ) )
 				remote_sequence = packet_sequence;
 		}
 		
@@ -847,17 +858,9 @@ namespace net
 			
 			if ( receivedQueue.size() )
 			{
-				const unsigned int latest_recv_sequence = receivedQueue.back().sequence;
-				// handle sequence wrap around
-				if ( latest_recv_sequence < 33 )
-				{
-					const unsigned int minimum_wrap_sequence = 255 - ( 33 - latest_recv_sequence );
-					while ( receivedQueue.size() && receivedQueue.front().sequence > 127 && receivedQueue.front().sequence < minimum_wrap_sequence )
-						receivedQueue.pop_front();
-				}
-				// handle standard ack
-				const unsigned int minimum_sequence = ( latest_recv_sequence > 33 ) ? latest_recv_sequence - 33 : 0;
-				while ( receivedQueue.size() && receivedQueue.front().sequence < minimum_sequence )
+				const unsigned int latest_sequence = receivedQueue.back().sequence;
+				const unsigned int minimum_sequence = latest_sequence >= 34 ? ( latest_sequence - 34 ) : max_sequence - ( 34 - latest_sequence );
+				while ( receivedQueue.size() && !SequenceIsMoreRecent( receivedQueue.front().sequence, minimum_sequence ) )
 					receivedQueue.pop_front();
 			}
 
@@ -981,6 +984,8 @@ namespace net
 					{
 						for ( PacketQueue::iterator itor = begin(); itor != end(); itor++ )
 						{
+							if ( itor->sequence == p.sequence )
+								printf( "dup add %d\n", itor->sequence );
 							assert( itor->sequence != p.sequence );
 							if ( sequence_more_recent( itor->sequence, p.sequence, max_sequence ) )
 							{
