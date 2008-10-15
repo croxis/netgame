@@ -126,6 +126,65 @@ void test_reliability_system()
 	check( ReliabilitySystem::generate_ack_bits( 1, packetQueue, MaximumSequence ) == 0xFFFFFFFE );
 	check( ReliabilitySystem::generate_ack_bits( 240, packetQueue, MaximumSequence ) == 0x0000FFFF );
 	check( ReliabilitySystem::generate_ack_bits( 16, packetQueue, MaximumSequence ) == 0xFFFF0000 );
+	
+	printf( "check process ack (1)\n" );
+	{
+		PacketQueue pendingAckQueue;
+		for ( int i = 0; i < 33; ++i )
+		{
+			PacketData data;
+			data.sequence = i;
+			data.time = 0.0f;
+			pendingAckQueue.insert_sorted( data, MaximumSequence );
+			pendingAckQueue.verify_sorted( MaximumSequence );
+		}
+		PacketQueue ackedQueue;
+		std::vector<unsigned int> acks;
+		float rtt = 0.0f;
+		unsigned int acked_packets = 0;
+		ReliabilitySystem::process_ack( 32, 0xFFFFFFFF, pendingAckQueue, ackedQueue, acks, acked_packets, rtt, MaximumSequence );
+		check( acks.size() == 33 );
+		check( acked_packets == 33 );
+		check( ackedQueue.size() == 33 );
+		check( pendingAckQueue.size() == 0 );
+		ackedQueue.verify_sorted( MaximumSequence );
+		for ( unsigned int i = 0; i < acks.size(); ++i )
+			check( acks[i] == i );
+		unsigned int i = 0;
+		for ( PacketQueue::iterator itor = pendingAckQueue.begin(); itor != pendingAckQueue.end(); ++itor, ++i )
+			check( itor->sequence == i );
+	}
+
+	printf( "check process ack (2)\n" );
+	{
+		PacketQueue pendingAckQueue;
+		for ( int i = 0; i < 33; ++i )
+		{
+			PacketData data;
+			data.sequence = i;
+			data.time = 0.0f;
+			pendingAckQueue.insert_sorted( data, MaximumSequence );
+			pendingAckQueue.verify_sorted( MaximumSequence );
+		}
+		PacketQueue ackedQueue;
+		std::vector<unsigned int> acks;
+		float rtt = 0.0f;
+		unsigned int acked_packets = 0;
+		ReliabilitySystem::process_ack( 32, 0x0000FFFF, pendingAckQueue, ackedQueue, acks, acked_packets, rtt, MaximumSequence );
+		check( acks.size() == 17 );
+		check( acked_packets == 17 );
+		check( ackedQueue.size() == 17 );
+		check( pendingAckQueue.size() == 33 - 17 );
+		ackedQueue.verify_sorted( MaximumSequence );
+		unsigned int i = 0;
+		for ( PacketQueue::iterator itor = pendingAckQueue.begin(); itor != pendingAckQueue.end(); ++itor, ++i )
+			check( itor->sequence == i );
+		i = 0;
+		for ( PacketQueue::iterator itor = ackedQueue.begin(); itor != ackedQueue.end(); ++itor, ++i )
+			check( itor->sequence == i + 16 );
+		for ( unsigned int i = 0; i < acks.size(); ++i )
+			check( acks[i] == i + 16 );
+	}
 }
 
 void test_join()

@@ -674,8 +674,8 @@ namespace net
 		
 		void ProcessAck( unsigned int ack, unsigned int ack_bits )
 		{
-			// process first ack
-			// process ack bits
+			std::vector<unsigned int> acks;		// todo: add member
+			process_ack( ack, ack_bits, pendingAckQueue, ackedQueue, acks, acked_packets, rtt, max_sequence );
 		}
 				
 		void Update( float deltaTime )
@@ -683,6 +683,9 @@ namespace net
 			AdvanceQueueTime( deltaTime );
 			UpdateQueues();
 			UpdateStats();
+			#ifdef NET_UNIT_TEST
+			Validate();
+			#endif
 		}
 		
 		void Validate()
@@ -727,6 +730,44 @@ namespace net
 					ack_bits |= 1 << bit_index;
 			}
 			return ack_bits;
+		}
+		
+		static void process_ack( unsigned int ack, unsigned int ack_bits, 
+								 PacketQueue & pending_ack_queue, PacketQueue & acked_queue, 
+								 std::vector<unsigned int> & acks, unsigned int & acked_packets, 
+								 float & rtt, unsigned int max_sequence )
+		{
+			if ( pending_ack_queue.empty() )
+				return;
+				
+			PacketQueue::iterator itor = pending_ack_queue.begin();
+			while ( itor != pending_ack_queue.end() )
+			{
+				bool acked = false;
+				
+				if ( itor->sequence == ack )
+				{
+					acked = true;
+				}
+				else if ( !sequence_more_recent( itor->sequence, ack, max_sequence ) )
+				{
+					int bit_index = bit_index_for_sequence( itor->sequence, ack, max_sequence );
+					if ( bit_index <= 31 )
+						acked = ( ack_bits >> bit_index ) & 1;
+				}
+				
+				if ( acked )
+				{
+					rtt += ( itor->time - rtt ) * 0.01f;
+
+					acked_queue.insert_sorted( *itor, max_sequence );
+					acks.push_back( itor->sequence );
+					acked_packets++;
+					itor = pending_ack_queue.erase( itor );
+				}
+				else
+					++itor;
+			}
 		}
 		
 	protected:
