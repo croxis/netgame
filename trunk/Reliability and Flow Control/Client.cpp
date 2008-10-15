@@ -77,14 +77,14 @@ int main( int argc, char * argv[] )
 
 		if ( accumulator > 0.25f && connection.IsConnected() )
 		{
-			float rtt = connection.GetRoundTripTime();
+			float rtt = connection.GetReliabilitySystem().GetRoundTripTime();
 			
-			unsigned int sent_packets = connection.GetSentPackets();
-			unsigned int acked_packets = connection.GetAckedPackets();
-			unsigned int lost_packets = connection.GetLostPackets();
+			unsigned int sent_packets = connection.GetReliabilitySystem().GetSentPackets();
+			unsigned int acked_packets = connection.GetReliabilitySystem().GetAckedPackets();
+			unsigned int lost_packets = connection.GetReliabilitySystem().GetLostPackets();
 			
-			float sent_bandwidth = connection.GetSentBandwidth();
-			float acked_bandwidth = connection.GetAckedBandwidth();
+			float sent_bandwidth = connection.GetReliabilitySystem().GetSentBandwidth();
+			float acked_bandwidth = connection.GetReliabilitySystem().GetAckedBandwidth();
 			
 			printf( "rtt %.1fms, sent %d, acked %d, lost %d (%.1f%%), sent bandwidth = %.1fkbps, acked bandwidth = %.1fkbps\n", 
 				rtt * 1000.0f, sent_packets, acked_packets, lost_packets, 

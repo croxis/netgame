@@ -78,7 +78,7 @@ int main( int argc, char * argv[] )
 		
 		unsigned int * acks = NULL;
 		int ack_count = 0;
-		connection.GetAcks( &acks, ack_count );
+		connection.GetReliabilitySystem().GetAcks( &acks, ack_count );
 		if ( ack_count > 0 )
 		{
 			printf( "acks: %d", acks[0] );

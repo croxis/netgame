@@ -635,51 +635,49 @@ namespace net
 			rtt_maximum = 1.0f;
 		}
 		
-		static bool sequence_more_recent( unsigned int s1, unsigned int s2, unsigned int max_sequence )
+		void PacketSent( int size )
 		{
-			return ( s1 > s2 ) && ( s1 - s2 <= max_sequence/2 ) || ( s2 > s1 ) && ( s2 - s1 > max_sequence/2 );
-		}
-		
-		void PacketSent( unsigned int sequence, int size )
-		{
-			assert( sequence_more_recent( sequence, local_sequence, max_sequence ) );
-			assert( !sentQueue.exists( sequence ) );
-			assert( !pendingAckQueue.exists( sequence ) );
+			assert( !sentQueue.exists( local_sequence ) );
+			assert( !pendingAckQueue.exists( local_sequence ) );
 			PacketData data;
-			data.sequence = sequence;
+			data.sequence = local_sequence;
 			data.time = 0.0f;
 			data.size = size;
 			sentQueue.push_back( data );
 			pendingAckQueue.push_back( data );
-			local_sequence = sequence;
+			sent_packets++;
+			local_sequence++;
+			if ( local_sequence > max_sequence )
+				local_sequence = 0;
 		}
 		
 		void PacketReceived( unsigned int sequence, int size )
 		{
+			recv_packets++;
 			if ( receivedQueue.exists( sequence ) )
 				return;
 			PacketData data;
 			data.sequence = sequence;
 			data.time = 0.0f;
 			data.size = size;
-			sentQueue.push_back( data );
+			receivedQueue.push_back( data );
 			if ( sequence_more_recent( sequence, remote_sequence, max_sequence ) )
 				remote_sequence = sequence;
 		}
 
-		unsigned int GenerateAckBits( unsigned int ack )
+		unsigned int GenerateAckBits()
 		{
-			return generate_ack_bits( ack, receivedQueue, max_sequence );
+			return generate_ack_bits( GetRemoteSequence(), receivedQueue, max_sequence );
 		}
 		
 		void ProcessAck( unsigned int ack, unsigned int ack_bits )
 		{
-			std::vector<unsigned int> acks;		// todo: add member
 			process_ack( ack, ack_bits, pendingAckQueue, ackedQueue, acks, acked_packets, rtt, max_sequence );
 		}
 				
 		void Update( float deltaTime )
 		{
+			acks.clear();
 			AdvanceQueueTime( deltaTime );
 			UpdateQueues();
 			UpdateStats();
@@ -695,11 +693,14 @@ namespace net
 			pendingAckQueue.verify_sorted( max_sequence );
 			ackedQueue.verify_sorted( max_sequence );
 		}
-		
-	#ifndef NET_UNIT_TEST
-	protected:
-	#endif
 
+		// utility functions
+
+		static bool sequence_more_recent( unsigned int s1, unsigned int s2, unsigned int max_sequence )
+		{
+			return ( s1 > s2 ) && ( s1 - s2 <= max_sequence/2 ) || ( s2 > s1 ) && ( s2 - s1 > max_sequence/2 );
+		}
+		
 		static int bit_index_for_sequence( unsigned int sequence, unsigned int ack, unsigned int max_sequence )
 		{
 			assert( sequence != ack );
@@ -770,6 +771,69 @@ namespace net
 			}
 		}
 		
+		// data accessors
+				
+		unsigned int GetLocalSequence() const
+		{
+			return local_sequence;
+		}
+
+		unsigned int GetRemoteSequence() const
+		{
+			return remote_sequence;
+		}
+		
+		unsigned int GetMaxSequence() const
+		{
+			return max_sequence;
+		}
+				
+ 		void GetAcks( unsigned int ** acks, int & count )
+		{
+			*acks = &this->acks[0];
+			count = (int) this->acks.size();
+		}
+		
+		unsigned int GetSentPackets() const
+		{
+			return sent_packets;
+		}
+		
+		unsigned int GetReceivedPackets() const
+		{
+			return recv_packets;
+		}
+
+		unsigned int GetLostPackets() const
+		{
+			return lost_packets;
+		}
+
+		unsigned int GetAckedPackets() const
+		{
+			return acked_packets;
+		}
+
+		float GetSentBandwidth() const
+		{
+			return sent_bandwidth;
+		}
+
+		float GetAckedBandwidth() const
+		{
+			return acked_bandwidth;
+		}
+
+		float GetRoundTripTime() const
+		{
+			return rtt;
+		}
+		
+		int GetHeaderSize() const
+		{
+			return 12;
+		}
+
 	protected:
 		
 		void AdvanceQueueTime( float deltaTime )
@@ -848,6 +912,8 @@ namespace net
 		float rtt;							// estimated round trip time
 		float rtt_maximum;					// maximum expected round trip time (hard coded to one second for the moment)
 
+		std::vector<unsigned int> acks;		// acked packets from last set of packet receives. cleared each update!
+
 		PacketQueue sentQueue;				// sent packets used to calculate sent bandwidth (kept until rtt_maximum)
 		PacketQueue pendingAckQueue;		// sent packets which have not been acked yet (kept until rtt_maximum * 2 )
 		PacketQueue receivedQueue;			// received packets for determining acks to send (kept up to most recent recv sequence - 32)
@@ -861,10 +927,9 @@ namespace net
 	public:
 		
 		ReliableConnection( unsigned int protocolId, float timeout, unsigned int max_sequence = 0xFFFFFFFF )
-			: Connection( protocolId, timeout )
+			: Connection( protocolId, timeout ), reliabilitySystem( max_sequence )
 		{
 			ClearData();
-			this->max_sequence = max_sequence;
 			#ifdef NET_UNIT_TEST
 			packet_loss_mask = 0;
 			#endif
@@ -881,26 +946,22 @@ namespace net
 		bool SendPacket( const unsigned char data[], int size )
 		{
 			#ifdef NET_UNIT_TEST
-			if ( local_sequence & packet_loss_mask )
+			if ( reliabilitySystem.GetLocalSequence() & packet_loss_mask )
 			{
-				AddSentPacketToQueues( local_sequence, size );
-				UpdateLocalSequence();
-				sent_packets++;
+				reliabilitySystem.PacketSent( size );
 				return true;
 			}
 			#endif
 			const int header = 12;
 			unsigned char packet[header+size];
-			unsigned int ack = remote_sequence;
-			unsigned int ack_bits = 0;
-			GenerateAckBits( ack, ack_bits );
-			WriteHeader( packet, local_sequence, ack, ack_bits );
+			unsigned int seq = reliabilitySystem.GetLocalSequence();
+			unsigned int ack = reliabilitySystem.GetRemoteSequence();
+			unsigned int ack_bits = reliabilitySystem.GenerateAckBits();
+			WriteHeader( packet, seq, ack, ack_bits );
 			memcpy( packet + header, data, size );
  			if ( !Connection::SendPacket( packet, size + header ) )
 				return false;
-			AddSentPacketToQueues( local_sequence, size );
-			UpdateLocalSequence();
-			sent_packets++;
+			reliabilitySystem.PacketSent( size );
 			return true;
 		}	
 		
@@ -919,22 +980,28 @@ namespace net
 			unsigned int packet_ack = 0;
 			unsigned int packet_ack_bits = 0;
 			ReadHeader( packet, packet_sequence, packet_ack, packet_ack_bits );
-			ProcessAcks( packet_ack, packet_ack_bits );
-			UpdateRemoteSequence( packet_sequence );
-			AddReceivedPacketToQueue( packet_sequence, received_bytes - header );
-			recv_packets++;
+			reliabilitySystem.PacketReceived( packet_sequence, received_bytes - header );
+			reliabilitySystem.ProcessAck( packet_ack, packet_ack_bits );
 			memcpy( data, packet + header, received_bytes - header );
 			return received_bytes - header;
 		}
 		
 		void Update( float deltaTime )
 		{
-			acks.clear();
 			Connection::Update( deltaTime );
-			UpdateQueues( deltaTime );
-			UpdateStats();
+			reliabilitySystem.Update( deltaTime );
 		}
 		
+		int GetHeaderSize() const
+		{
+			return Connection::GetHeaderSize() + reliabilitySystem.GetHeaderSize();
+		}
+		
+		ReliabilitySystem & GetReliabilitySystem()
+		{
+			return reliabilitySystem;
+		}
+
 		// unit test controls
 		
 		#ifdef NET_UNIT_TEST
@@ -943,69 +1010,6 @@ namespace net
 			packet_loss_mask = mask;
 		}
 		#endif
-
-		// data accessors
-				
-		unsigned int GetLocalSequence() const
-		{
-			return local_sequence;
-		}
-
-		unsigned int GetRemoteSequence() const
-		{
-			return remote_sequence;
-		}
-		
-		unsigned int GetMaxSequence() const
-		{
-			return max_sequence;
-		}
-				
- 		void GetAcks( unsigned int ** acks, int & count )
-		{
-			*acks = &this->acks[0];
-			count = (int) this->acks.size();
-		}
-		
-		unsigned int GetSentPackets() const
-		{
-			return sent_packets;
-		}
-		
-		unsigned int GetReceivedPackets() const
-		{
-			return recv_packets;
-		}
-
-		unsigned int GetLostPackets() const
-		{
-			return lost_packets;
-		}
-
-		unsigned int GetAckedPackets() const
-		{
-			return acked_packets;
-		}
-
-		float GetSentBandwidth() const
-		{
-			return sent_bandwidth;
-		}
-
-		float GetAckedBandwidth() const
-		{
-			return acked_bandwidth;
-		}
-
-		float GetRoundTripTime() const
-		{
-			return rtt;
-		}
-		
-		int GetHeaderSize() const
-		{
-			return 12 + Connection::GetHeaderSize();
-		}
 		
 	protected:		
 		
@@ -1036,189 +1040,7 @@ namespace net
 			ReadInteger( header + 4, ack );
 			ReadInteger( header + 8, ack_bits );
 		}
-		
-		void GenerateAckBits( unsigned int ack, unsigned int & ack_bits )
-		{
-			PacketQueue::reverse_iterator itor = receivedQueue.rbegin();
-			while ( itor != receivedQueue.rend() )
-			{
-				if ( itor->sequence != ack && !SequenceIsMoreRecent( itor->sequence, ack ) )
-				{
-					int bit_index = GetBitIndexForSequence( itor->sequence, ack );
-					if ( bit_index <= 31 )
-						ack_bits |= 1 << bit_index;
-				}
-				++itor;
-			}
-		}
-		
-		void ProcessAcks( unsigned int ack, unsigned int ack_bits )
-		{			
-			if ( pendingAckQueue.empty() )
-				return;
-				
-			PacketQueue::iterator itor = pendingAckQueue.begin();
-			while ( itor != pendingAckQueue.end() )
-			{
-				bool acked = false;
-				
-				if ( itor->sequence == ack )
-				{
-					acked = true;
-				}
-				else if ( !SequenceIsMoreRecent( itor->sequence, ack ) )
-				{
-					int bit_index = GetBitIndexForSequence( itor->sequence, ack );
-					if ( bit_index <= 31 )
-						acked = ( ack_bits >> bit_index ) & 1;
-				}
-				
-				if ( acked )
-				{
-					rtt += ( itor->time - rtt ) * 0.01f;
 
-					PacketData data;
-					data.sequence = itor->sequence;
-					data.time = itor->time;
-					data.size = itor->size;
-					ackedQueue.insert_sorted( data, max_sequence );
-
-					acked_packets++;
-					
-					acks.push_back( itor->sequence );
-
-					itor = pendingAckQueue.erase( itor );
-				}
-				else
-					++itor;
-			}
-		}
-
-		int GetBitIndexForSequence( unsigned int sequence, unsigned int ack )
-		{
-			// finds the bit index for a sequence before ack:
-			//  + easy case: if ack is 100 then sequence # 90 is bit index 9
-			//  + hard case: if ack is 10, then sequence # of max_sequence - 5 is bit index 14 (wrap around...)
-			assert( sequence != ack );
-			assert( !SequenceIsMoreRecent( sequence, ack ) );
-			int bit_index;
-			if ( sequence > ack )
-			{
-				// note: sequence wrap around case
-				assert( ack < 33 );
-				assert( max_sequence >= sequence );
-				bit_index = ack + ( max_sequence - sequence );
-				assert( bit_index >= 0 );
-			}
-			else
-			{
-				assert( ack >= 1 );
-				assert( sequence <= ack - 1 );
-				bit_index = ack - 1 - sequence;
-				assert( bit_index >= 0 );
-			}
-			return bit_index;
-		}
-		
-		bool SequenceIsMoreRecent( unsigned int s1, unsigned int s2 )
-		{
-			// note: returns true if s1 is a more recent sequence number than s2, taking into account sequence # wrapping
-			return ( s1 > s2 ) && ( s1 - s2 <= max_sequence/2 ) || ( s2 > s1 ) && ( s2 - s1 > max_sequence/2 );
-		}		
-		
-		void UpdateLocalSequence()
-		{
-			local_sequence++;
-			if ( local_sequence > max_sequence )
-				local_sequence = 0;
-		}
-		
-		void UpdateRemoteSequence( unsigned int packet_sequence )
-		{
-			if ( SequenceIsMoreRecent( packet_sequence, remote_sequence ) )
-				remote_sequence = packet_sequence;
-		}
-		
-		void AddSentPacketToQueues( unsigned int sequence, int size )
-		{
-			PacketData p;
-			p.sequence = sequence;
-			p.time = 0.0f;
-			p.size = size;
-			sentQueue.push_back( p );				// note: sent packet and pending ack queues are always in sequence order, by definition
-			pendingAckQueue.push_back( p );
-		}
-		
-		void AddReceivedPacketToQueue( unsigned int sequence, int size )
-		{
-			PacketData p;
-			p.sequence = sequence;
-			p.time = 0.0f;
-			p.size = size;
-			receivedQueue.insert_sorted( p, max_sequence );
-		}
-		
-		void UpdateQueues( float deltaTime )
-		{
-			// advance time for queue entries (time values are small and bounded above)
-			
-			for ( PacketQueue::iterator itor = sentQueue.begin(); itor != sentQueue.end(); itor++ )
-				itor->time += deltaTime;
-
-			for ( PacketQueue::iterator itor = receivedQueue.begin(); itor != receivedQueue.end(); itor++ )
-				itor->time += deltaTime;
-
-			for ( PacketQueue::iterator itor = pendingAckQueue.begin(); itor != pendingAckQueue.end(); itor++ )
-				itor->time += deltaTime;
-
-			for ( PacketQueue::iterator itor = ackedQueue.begin(); itor != ackedQueue.end(); itor++ )
-				itor->time += deltaTime;
-			
-			// update queues
-			
-			const float epsilon = 0.001f;
-			
-			while ( sentQueue.size() && sentQueue.front().time > rtt_maximum + epsilon )
-				sentQueue.pop_front();
-			
-			if ( receivedQueue.size() )
-			{
-				const unsigned int latest_sequence = receivedQueue.back().sequence;
-				const unsigned int minimum_sequence = latest_sequence >= 34 ? ( latest_sequence - 34 ) : max_sequence - ( 34 - latest_sequence );
-				while ( receivedQueue.size() && !SequenceIsMoreRecent( receivedQueue.front().sequence, minimum_sequence ) )
-					receivedQueue.pop_front();
-			}
-
-			while ( ackedQueue.size() && ackedQueue.front().time > rtt_maximum * 2 - epsilon )
-				ackedQueue.pop_front();
-
-			while ( pendingAckQueue.size() && pendingAckQueue.front().time > rtt_maximum + epsilon )
-			{
-				pendingAckQueue.pop_front();
-				lost_packets++;
-			}
-		}
-		
-		void UpdateStats()
-		{
-			assert( rtt_maximum == 1.0f );
-			int sent_bytes_per_second = 0;
-			for ( PacketQueue::iterator itor = sentQueue.begin(); itor != sentQueue.end(); ++itor )
-				sent_bytes_per_second += itor->size;
-			int acked_packets_per_second = 0;
-			int acked_bytes_per_second = 0;
-			for ( PacketQueue::iterator itor = ackedQueue.begin(); itor != ackedQueue.end(); ++itor )
-			{
-				if ( itor->time >= rtt_maximum )
-				{
-					acked_packets_per_second++;
-					acked_bytes_per_second += itor->size;
-				}
-			}
-			sent_bandwidth = sent_bytes_per_second * ( 8 / 1000.0f );
-			acked_bandwidth = acked_bytes_per_second * ( 8 / 1000.0f );
-		}
-		
 		virtual void OnStop()
 		{
 			ClearData();
@@ -1233,100 +1055,14 @@ namespace net
 
 		void ClearData()
 		{
-			sentQueue.clear();
-			receivedQueue.clear();
-			ackedQueue.clear();
-			pendingAckQueue.clear();
-			acks.clear();
- 			local_sequence = 0;
-			remote_sequence = 0;
-			sent_packets = 0;
-			recv_packets = 0;
-			lost_packets = 0;
-			acked_packets = 0;
-			sent_bandwidth = 0.0f;
-			acked_bandwidth = 0.0f;
-			rtt = 0.0f;
-			rtt_maximum = 1.0f;
+			reliabilitySystem.Reset();
 		}
 
-		std::vector<unsigned int> acks;		// acked packets from last set of packet receives. cleared each update!
-
-		unsigned int local_sequence;		// current sequence number for sent packets
-		unsigned int remote_sequence;		// most recently received sequence number from other computer
-		
-		unsigned int sent_packets;			// total number of packets sent
-		unsigned int recv_packets;			// total number of packets received
-		unsigned int lost_packets;			// total number of packets lost
-		unsigned int acked_packets;			// total number of packets acked
-
-		float sent_bandwidth;				// approximate sent bandwidth over the last second
-		float acked_bandwidth;				// approximate acked bandwidth over the last second
-		float rtt;							// estimated round trip time
-		float rtt_maximum;					// maximum expected round trip time (hard coded to one second for the moment)
-		
-		unsigned int max_sequence;			// maximum sequence number, wraps around to zero past this (modular arithmetic)
-		
 		#ifdef NET_UNIT_TEST
-		unsigned int packet_loss_mask;		// mask sequence number, if non-zero, drop packet - for unit test only
+		unsigned int packet_loss_mask;			// mask sequence number, if non-zero, drop packet - for unit test only
 		#endif
-
-		// packet queue definition
-
-		struct PacketData
-		{
-			unsigned int sequence;			// packet sequence number
-			float time;					    // time offset since packet was sent or received (depending on context)
-			int size;						// packet size in bytes
-		};
-
-		class PacketQueue : public std::list<PacketData>
-		{
-		public:
-			
-			bool sequence_more_recent( unsigned int s1, unsigned int s2, unsigned int max_sequence )
-			{
-				return ( s1 > s2 ) && ( s1 - s2 <= max_sequence/2 ) || ( s2 > s1 ) && ( s2 - s1 > max_sequence/2 );
-			}		
-			
-			void insert_sorted( const PacketData & p, unsigned int max_sequence )
-			{
-				if ( empty() )
-				{
-					push_back( p );
-				}
-				else
-				{
-					if ( !sequence_more_recent( p.sequence, front().sequence, max_sequence ) )
-					{
-						push_front( p );
-					}
-					else if ( sequence_more_recent( p.sequence, back().sequence, max_sequence ) )
-					{
-						push_back( p );
-					}
-					else
-					{
-						for ( PacketQueue::iterator itor = begin(); itor != end(); itor++ )
-						{
-							if ( itor->sequence == p.sequence )
-								printf( "dup add %d\n", itor->sequence );
-							assert( itor->sequence != p.sequence );
-							if ( sequence_more_recent( itor->sequence, p.sequence, max_sequence ) )
-							{
-								insert( itor, p );
-								break;
-							}
-						}
-					}
-				}
-			}
-		};
-
-		PacketQueue sentQueue;				// sent packets (kept until rtt_maximum)
-		PacketQueue receivedQueue;			// received packets for determining acks (32+1 entries kept only)
-		PacketQueue ackedQueue;				// acked packets (kept until rtt_maximum * 2)
-		PacketQueue pendingAckQueue;		// sent packets which have not been acked yet
+		
+		ReliabilitySystem reliabilitySystem;	// reliability system: manages sequence numbers and acks, tracks network stats etc.
 	};
 }
 

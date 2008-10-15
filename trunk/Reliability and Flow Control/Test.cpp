@@ -762,9 +762,6 @@ void test_acks()
 		serverAckedPackets[i] = false;
 	}
 	
-	check( client.GetLocalSequence() == 0 );
-	check( server.GetLocalSequence() == 0 );
-
 	bool allPacketsAcked = false;
 
 	while ( true )
@@ -806,7 +803,7 @@ void test_acks()
 		
 		int ack_count = 0;
 		unsigned int * acks = NULL;
-		client.GetAcks( &acks, ack_count );
+		client.GetReliabilitySystem().GetAcks( &acks, ack_count );
 		check( ack_count == 0 || ack_count != 0 && acks );
 		for ( int i = 0; i < ack_count; ++i )
 		{
@@ -818,7 +815,7 @@ void test_acks()
 			}
 		}
 
-		server.GetAcks( &acks, ack_count );
+		server.GetReliabilitySystem().GetAcks( &acks, ack_count );
 		check( ack_count == 0 || ack_count != 0 && acks );
 		for ( int i = 0; i < ack_count; ++i )
 		{
@@ -879,9 +876,6 @@ void test_ack_bits()
 		serverAckedPackets[i] = false;
 	}
 	
-	check( client.GetLocalSequence() == 0 );
-	check( server.GetLocalSequence() == 0 );
-
 	bool allPacketsAcked = false;
 
 	while ( true )
@@ -913,7 +907,7 @@ void test_ack_bits()
 
 			int ack_count = 0;
 			unsigned int * acks = NULL;
-			client.GetAcks( &acks, ack_count );
+			client.GetReliabilitySystem().GetAcks( &acks, ack_count );
 			check( ack_count == 0 || ack_count != 0 && acks );
 			for ( int i = 0; i < ack_count; ++i )
 			{
@@ -945,7 +939,7 @@ void test_ack_bits()
 
 		int ack_count = 0;
 		unsigned int * acks = NULL;
-		server.GetAcks( &acks, ack_count );
+		server.GetReliabilitySystem().GetAcks( &acks, ack_count );
 		check( ack_count == 0 || ack_count != 0 && acks );
 		for ( int i = 0; i < ack_count; ++i )
 		{
@@ -1009,9 +1003,6 @@ void test_packet_loss()
 		serverAckedPackets[i] = false;
 	}
 	
-	check( client.GetLocalSequence() == 0 );
-	check( server.GetLocalSequence() == 0 );
-
 	bool allPacketsAcked = false;
 
 	while ( true )
@@ -1043,7 +1034,7 @@ void test_packet_loss()
 
 			int ack_count = 0;
 			unsigned int * acks = NULL;
-			client.GetAcks( &acks, ack_count );
+			client.GetReliabilitySystem().GetAcks( &acks, ack_count );
 			check( ack_count == 0 || ack_count != 0 && acks );
 			for ( int i = 0; i < ack_count; ++i )
 			{
@@ -1076,7 +1067,7 @@ void test_packet_loss()
 
 		int ack_count = 0;
 		unsigned int * acks = NULL;
-		server.GetAcks( &acks, ack_count );
+		server.GetReliabilitySystem().GetAcks( &acks, ack_count );
 		check( ack_count == 0 || ack_count != 0 && acks );
 		for ( int i = 0; i < ack_count; ++i )
 		{
@@ -1143,9 +1134,6 @@ void test_sequence_wrap_around()
 		serverAckCount[i] = 0;
 	}
 
-	check( client.GetLocalSequence() == 0 );
-	check( server.GetLocalSequence() == 0 );
-
 	bool allPacketsAcked = false;
 
 	while ( true )
@@ -1187,7 +1175,7 @@ void test_sequence_wrap_around()
 
 		int ack_count = 0;
 		unsigned int * acks = NULL;
-		client.GetAcks( &acks, ack_count );
+		client.GetReliabilitySystem().GetAcks( &acks, ack_count );
 		check( ack_count == 0 || ack_count != 0 && acks );
 		for ( int i = 0; i < ack_count; ++i )
 		{
@@ -1197,7 +1185,7 @@ void test_sequence_wrap_around()
 //			printf( "client ack %d (%d)\n", ack, clientAckCount[ack] );
 		}
 
-		server.GetAcks( &acks, ack_count );
+		server.GetReliabilitySystem().GetAcks( &acks, ack_count );
 		check( ack_count == 0 || ack_count != 0 && acks );
 		for ( int i = 0; i < ack_count; ++i )
 		{
@@ -1233,8 +1221,6 @@ void tests()
 {
 	test_packet_queue();
 	test_reliability_system();
-
-	/*
 	test_join();
 	test_join_timeout();
 	test_join_busy();
@@ -1244,7 +1230,6 @@ void tests()
 	test_ack_bits();
 	test_packet_loss();
 	test_sequence_wrap_around();
-	*/
 
 	printf( "-----------------------------------------------------\n" );
 	printf( "passed!\n" );
