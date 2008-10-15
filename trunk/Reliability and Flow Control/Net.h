@@ -699,15 +699,11 @@ namespace net
 
 		static int bit_index_for_sequence( unsigned int sequence, unsigned int ack, unsigned int max_sequence )
 		{
-			// finds the bit index for a sequence before ack
-			//  + if ack is 100 then sequence # 90 is bit index 9
-			//  + hard case: if ack is 10, then sequence # of max_sequence - 5 is bit index 14 (wrap around...)
 			assert( sequence != ack );
 			assert( !sequence_more_recent( sequence, ack, max_sequence ) );
 			int bit_index;
 			if ( sequence > ack )
 			{
-				// note: wrap around case
 				assert( ack < 33 );
 				assert( max_sequence >= sequence );
 				bit_index = ack + ( max_sequence - sequence );
