@@ -277,6 +277,38 @@ void test_reliability_system()
 		for ( PacketQueue::iterator itor = ackedQueue.begin(); itor != ackedQueue.end(); ++itor, ++i )
 			check( itor->sequence == ( (i+255-15) & 0xFF ) );
 	}
+
+	printf( "check process ack wrap around (3)\n" );
+	{
+		PacketQueue pendingAckQueue;
+		for ( int i = 255 - 31; i <= 255; ++i )
+		{
+			PacketData data;
+			data.sequence = i & 0xFF;
+			data.time = 0.0f;
+			pendingAckQueue.insert_sorted( data, MaximumSequence );
+			pendingAckQueue.verify_sorted( MaximumSequence );
+		}
+		check( pendingAckQueue.size() == 32 );
+		PacketQueue ackedQueue;
+		std::vector<unsigned int> acks;
+		float rtt = 0.0f;
+		unsigned int acked_packets = 0;
+		ReliabilitySystem::process_ack( 16, 0xFFFF0000, pendingAckQueue, ackedQueue, acks, acked_packets, rtt, MaximumSequence );
+		check( acks.size() == 16 );
+		check( acked_packets == 16 );
+		check( ackedQueue.size() == 16 );
+		check( pendingAckQueue.size() == 16 );
+		ackedQueue.verify_sorted( MaximumSequence );
+		for ( unsigned int i = 0; i < acks.size(); ++i )
+			check( acks[i] == ( (i+255-15) & 0xFF ) );
+		unsigned int i = 0;
+		for ( PacketQueue::iterator itor = pendingAckQueue.begin(); itor != pendingAckQueue.end(); ++itor, ++i )
+			check( itor->sequence == i + 255 - 31 );
+		i = 0;
+		for ( PacketQueue::iterator itor = ackedQueue.begin(); itor != ackedQueue.end(); ++itor, ++i )
+			check( itor->sequence == ( (i+255-15) & 0xFF ) );
+	}
 }
 
 void test_join()
