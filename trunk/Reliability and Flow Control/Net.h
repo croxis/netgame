@@ -667,9 +667,9 @@ namespace net
 				remote_sequence = sequence;
 		}
 
-		void GenerateAck( unsigned int & ack, unsigned int & ack_bits )
+		unsigned int GenerateAckBits( unsigned int ack )
 		{
-			// ...
+			return generate_ack_bits( ack, receivedQueue, max_sequence );
 		}
 		
 		void ProcessAck( unsigned int ack, unsigned int ack_bits )
@@ -677,7 +677,7 @@ namespace net
 			// process first ack
 			// process ack bits
 		}
-		
+				
 		void Update( float deltaTime )
 		{
 			AdvanceQueueTime( deltaTime );
@@ -691,6 +691,51 @@ namespace net
 			receivedQueue.verify_sorted( max_sequence );
 			pendingAckQueue.verify_sorted( max_sequence );
 			ackedQueue.verify_sorted( max_sequence );
+		}
+		
+	#ifndef NET_UNIT_TEST
+	protected:
+	#endif
+
+		static int bit_index_for_sequence( unsigned int sequence, unsigned int ack, unsigned int max_sequence )
+		{
+			// finds the bit index for a sequence before ack
+			//  + if ack is 100 then sequence # 90 is bit index 9
+			//  + hard case: if ack is 10, then sequence # of max_sequence - 5 is bit index 14 (wrap around...)
+			assert( sequence != ack );
+			assert( !sequence_more_recent( sequence, ack, max_sequence ) );
+			int bit_index;
+			if ( sequence > ack )
+			{
+				// note: wrap around case
+				assert( ack < 33 );
+				assert( max_sequence >= sequence );
+				bit_index = ack + ( max_sequence - sequence );
+				assert( bit_index >= 0 );
+			}
+			else
+			{
+				assert( ack >= 1 );
+				assert( sequence <= ack - 1 );
+				bit_index = ack - 1 - sequence;
+				assert( bit_index >= 0 );
+			}
+			return bit_index;
+		}
+		
+		static unsigned int generate_ack_bits( unsigned int ack, PacketQueue & received_queue, unsigned int max_sequence )
+		{
+			unsigned int ack_bits = 0;
+			for ( PacketQueue::iterator itor = received_queue.begin(); itor != received_queue.end(); itor++  )
+			{
+				if ( itor->sequence == ack || !sequence_more_recent( itor->sequence, ack, max_sequence ) )
+					break;
+				int bit_index = bit_index_for_sequence( itor->sequence, ack, max_sequence );
+				if ( bit_index <= 31 )
+					ack_bits |= 1 << bit_index;
+				++itor;
+			}
+			return ack_bits;
 		}
 		
 	protected:

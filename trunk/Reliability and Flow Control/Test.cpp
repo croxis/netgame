@@ -79,6 +79,30 @@ void test_packet_queue()
 	}
 }
 
+void test_reliability_system()
+{
+	printf( "-----------------------------------------------------\n" );
+	printf( "test reliability system\n" );
+	printf( "-----------------------------------------------------\n" );
+	
+	const int MaximumSequence = 255;
+	
+	printf( "check bit index for sequence\n" );
+	check( ReliabilitySystem::bit_index_for_sequence( 99, 100, MaximumSequence ) == 0 );
+	check( ReliabilitySystem::bit_index_for_sequence( 90, 100, MaximumSequence ) == 9 );
+	check( ReliabilitySystem::bit_index_for_sequence( 0, 1, MaximumSequence ) == 0 );
+	check( ReliabilitySystem::bit_index_for_sequence( 255, 0, MaximumSequence ) == 0 );
+	check( ReliabilitySystem::bit_index_for_sequence( 255, 1, MaximumSequence ) == 1 );
+	check( ReliabilitySystem::bit_index_for_sequence( 254, 1, MaximumSequence ) == 2 );
+	check( ReliabilitySystem::bit_index_for_sequence( 254, 2, MaximumSequence ) == 3 );
+	
+	printf( "check generate ack\n");
+	// ...
+	
+	printf( "check process ack\n" );
+	// ...	
+}
+
 void test_join()
 {
 	printf( "-----------------------------------------------------\n" );
@@ -1000,6 +1024,7 @@ void test_sequence_wrap_around()
 void tests()
 {
 	test_packet_queue();
+	test_reliability_system();
 
 	/*
 	test_join();
