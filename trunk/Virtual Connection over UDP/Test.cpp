@@ -73,8 +73,6 @@ void test_join()
 		
 		client.Update( DeltaTime );
 		server.Update( DeltaTime );
-		
-		wait( DeltaTime );
 	}
 	
 	check( client.IsConnected() );
@@ -116,8 +114,6 @@ void test_join_timeout()
 		}
 		
 		client.Update( DeltaTime );
-		
-		wait( DeltaTime );
 	}
 	
 	check( !client.IsConnected() );
@@ -179,8 +175,6 @@ void test_join_busy()
 		
 		client.Update( DeltaTime );
 		server.Update( DeltaTime );
-		
-		wait( DeltaTime );
 	}
 	
 	check( client.IsConnected() );
@@ -233,8 +227,6 @@ void test_join_busy()
 		client.Update( DeltaTime );
 		server.Update( DeltaTime );
 		busy.Update( DeltaTime );
-		
-		wait( DeltaTime );
 	}
 
 	check( client.IsConnected() );
@@ -298,8 +290,6 @@ void test_rejoin()
 		
 		client.Update( DeltaTime );
 		server.Update( DeltaTime );
-		
-		wait( DeltaTime );
 	}
 	
 	check( client.IsConnected() );
@@ -327,8 +317,6 @@ void test_rejoin()
 
 		client.Update( DeltaTime );
 		server.Update( DeltaTime );
-
-		wait( DeltaTime );
 	}
 	
 	check( !client.IsConnected() );
@@ -370,8 +358,6 @@ void test_rejoin()
 		
 		client.Update( DeltaTime );
 		server.Update( DeltaTime );
-		
-		wait( DeltaTime );
 	}
 	
 	check( client.IsConnected() );
@@ -433,8 +419,6 @@ void test_payload()
 		
 		client.Update( DeltaTime );
 		server.Update( DeltaTime );
-		
-		wait( DeltaTime );
 	}
 	
 	check( client.IsConnected() );

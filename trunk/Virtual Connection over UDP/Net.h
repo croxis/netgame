@@ -325,9 +325,9 @@ namespace net
 			ClearData();
 		}
 		
-		~Connection()
+		virtual ~Connection()
 		{
-			if ( running )
+			if ( IsRunning() )
 				Stop();
 		}
 		
@@ -338,6 +338,7 @@ namespace net
 			if ( !socket.Open( port ) )
 				return false;
 			running = true;
+			OnStart();
 			return true;
 		}
 		
@@ -345,15 +346,27 @@ namespace net
 		{
 			assert( running );
 			printf( "stop connection\n" );
+			bool connected = IsConnected();
 			ClearData();
 			socket.Close();
 			running = false;
+			if ( connected )
+				OnDisconnect();
+			OnStop();
+		}
+		
+		bool IsRunning() const
+		{
+			return running;
 		}
 		
 		void Listen()
 		{
 			printf( "server listening for connection\n" );
+			bool connected = IsConnected();
 			ClearData();
+			if ( connected )
+				OnDisconnect();
 			mode = Server;
 			state = Listening;
 		}
@@ -362,7 +375,10 @@ namespace net
 		{
 			printf( "client connecting to %d.%d.%d.%d:%d\n", 
 				address.GetA(), address.GetB(), address.GetC(), address.GetD(), address.GetPort() );
+			bool connected = IsConnected();
 			ClearData();
+			if ( connected )
+				OnDisconnect();
 			mode = Client;
 			state = Connecting;
 			this->address = address;
@@ -393,7 +409,7 @@ namespace net
 			return mode;
 		}
 		
-		void Update( float deltaTime )
+		virtual void Update( float deltaTime )
 		{
 			assert( running );
 			timeoutAccumulator += deltaTime;
@@ -404,6 +420,7 @@ namespace net
 					printf( "connect timed out\n" );
 					ClearData();
 					state = ConnectFail;
+					OnDisconnect();
 				}
 				else if ( state == Connected )
 				{
@@ -411,11 +428,12 @@ namespace net
 					ClearData();
 					if ( state == Connecting )
 						state = ConnectFail;
+					OnDisconnect();
 				}
 			}
 		}
 		
-		bool SendPacket( const unsigned char data[], int size )
+		virtual bool SendPacket( const unsigned char data[], int size )
 		{
 			assert( running );
 			if ( address.GetAddress() == 0 )
@@ -429,7 +447,7 @@ namespace net
 			return socket.Send( address, packet, size + 4 );
 		}
 		
-		int ReceivePacket( unsigned char data[], int size )
+		virtual int ReceivePacket( unsigned char data[], int size )
 		{
 			assert( running );
 			unsigned char packet[size+4];
@@ -450,6 +468,7 @@ namespace net
 					sender.GetA(), sender.GetB(), sender.GetC(), sender.GetD(), sender.GetPort() );
 				state = Connected;
 				address = sender;
+				OnConnect();
 			}
 			if ( sender == address )
 			{
@@ -457,15 +476,28 @@ namespace net
 				{
 					printf( "client completes connection with server\n" );
 					state = Connected;
+					OnConnect();
 				}
 				timeoutAccumulator = 0.0f;
-				memcpy( data, &packet[4], size - 4 );
-				return size - 4;
+				memcpy( data, &packet[4], bytes_read - 4 );
+				return bytes_read - 4;
 			}
 			return 0;
 		}
 		
+		int GetHeaderSize() const
+		{
+			return 4;
+		}
+		
 	protected:
+		
+		virtual void OnStart()		{}
+		virtual void OnStop()		{}
+		virtual void OnConnect()    {}
+		virtual void OnDisconnect() {}
+			
+	private:
 		
 		void ClearData()
 		{
@@ -474,8 +506,6 @@ namespace net
 			address = Address();
 		}
 	
-	private:
-		
 		enum State
 		{
 			Disconnected,
