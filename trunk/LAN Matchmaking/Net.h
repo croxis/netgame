@@ -1847,7 +1847,7 @@ namespace net
 	public:
 		
 		Beacon( unsigned int protocolId, unsigned int listenerPort, unsigned int serverPort )
-			: socket( Socket::Broadcast )
+			: socket( Socket::Broadcast | Socket::NonBlocking )
 		{
 			this->protocolId = protocolId;
 			this->listenerPort = listenerPort;
@@ -1953,16 +1953,29 @@ namespace net
 		
 		void Update( float deltaTime )
 		{
-			/*
 			assert( running );
 			unsigned char packet[256];
-			WriteInteger( packet, 0 );
-			WriteInteger( packet + 4, protocolId );
-			WriteInteger( packet + 8, serverPort );
-			socket.Send( Address(255,255,255,255,listenerPort), packet, 12 );
-			Address sender;
-			while ( socket.Receive( sender, packet, 256 ) );
-			*/
+			while ( true )
+			{
+				Address sender;
+				int bytes_read = socket.Receive( sender, packet, 256 );
+				if ( bytes_read == 0 )
+					break;
+				if ( bytes_read != 12 )
+					continue;
+				printf( "received packet\n" );
+				unsigned int packet_zero;
+				unsigned int packet_protocolId;
+				unsigned int packet_serverPort;
+				ReadInteger( packet, packet_zero );
+				ReadInteger( packet + 4, packet_protocolId );
+				ReadInteger( packet + 8, packet_serverPort );
+				if ( packet_zero != 0 )
+					continue;
+				if ( packet_protocolId != protocolId )
+					continue;
+				printf( " -> found server!!!\n" );
+			}
 		}
 		
 		int GetEntryCount() const

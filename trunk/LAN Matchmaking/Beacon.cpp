@@ -57,7 +57,7 @@ int main( int argc, char * argv[] )
 	while ( true )
 	{
 		accumulator += DeltaTime;
-		while ( accumulator >= 2.0f )
+		while ( accumulator >= 1.0f )
 		{
 			printf( "---------------------------------------------\n" );
 			const int entryCount = listener.GetEntryCount();
@@ -70,11 +70,10 @@ int main( int argc, char * argv[] )
 					entry.address.GetPort(), entry.name );
 			}
 			printf( "---------------------------------------------\n" );
-			accumulator -= 2.0f;
+			accumulator -= 1.0f;
 		}
 		
 		beacon.Update( DeltaTime );
-		
 		listener.Update( DeltaTime );
 		
 		wait( DeltaTime );
