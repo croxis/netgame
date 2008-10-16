@@ -10,11 +10,11 @@ all : FlowControl Acks Client Server Test
 test : Test
 	./Test
 	
-server : Server
-	./Server
+server : Reliability
+	./Reliability
 
-client : Client
-	./Client
+client : Reliability
+	./Reliability 127.0.0.1
 	
 acks : Acks
 	./Acks
