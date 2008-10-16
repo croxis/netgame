@@ -765,7 +765,7 @@ namespace net
 				
 				if ( acked )
 				{
-					rtt += ( itor->time - rtt ) * 0.01f;
+					rtt += ( itor->time - rtt ) * 0.1f;
 
 					acked_queue.insert_sorted( *itor, max_sequence );
 					acks.push_back( itor->sequence );

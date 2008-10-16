@@ -20,10 +20,16 @@ public:
 	
 	FlowControl()
 	{
-		printf( "starting in good mode\n" );
-		mode = Good;
-		penalty_time = 1.0f;
+		printf( "flow control initialized\n" );
+		Reset();
+	}
+	
+	void Reset()
+	{
+		mode = Bad;
+		penalty_time = 4.0f;
 		good_conditions_time = 0.0f;
+		penalty_reduction_accumulator = 0.0f;
 	}
 	
 	void Update( float deltaTime, float rtt )
@@ -34,24 +40,26 @@ public:
 		{
 			if ( rtt > RTT_Threshold )
 			{
-				printf( "rtt = %.2f\n", rtt );
-				printf( " -> dropping to bad mode!\n" );
+				printf( "bad mode (rtt = %.2f)\n", rtt );
 				mode = Bad;
 				if ( good_conditions_time < 10.0f && penalty_time < 60.0f )
 				{
 					penalty_time *= 2.0f;
-					printf( "penalty time increased to %f\n", penalty_time );
+					printf( "penalty time increased to %.1f\n", penalty_time );
 				}
 				good_conditions_time = 0.0f;
+				penalty_reduction_accumulator = 0.0f;
 				return;
 			}
 			
 			good_conditions_time += deltaTime;
+			penalty_reduction_accumulator += deltaTime;
 			
-			if ( good_conditions_time > 10.0f && penalty_time > 1.0f )
+			if ( penalty_reduction_accumulator > 10.0f && penalty_time > 1.0f )
 			{
-				printf( "penalty time reduced to %f\n", penalty_time );
 				penalty_time /= 2.0f;
+				printf( "penalty time reduced to %.1f\n", penalty_time );
+				penalty_reduction_accumulator = 0.0f;
 			}
 		}
 		
@@ -64,9 +72,9 @@ public:
 				
 			if ( good_conditions_time > penalty_time )
 			{
-				printf( "rtt = %.2f\n", rtt );
-				printf( " -> returning to good mode\n" );
+				printf( "good mode (rtt = %.2f)\n", rtt );
 				good_conditions_time = 0.0f;
+				penalty_reduction_accumulator = 0.0f;
 				mode = Good;
 				return;
 			}
@@ -89,6 +97,7 @@ private:
 	Mode mode;
 	float penalty_time;
 	float good_conditions_time;
+	float penalty_reduction_accumulator;
 };
 
 // ----------------------------------------------
@@ -156,7 +165,8 @@ int main( int argc, char * argv[] )
 	{
 		// update flow control
 		
-		flowControl.Update( DeltaTime, connection.GetReliabilitySystem().GetRoundTripTime() * 1000.0f );
+		if ( connection.IsConnected() )
+			flowControl.Update( DeltaTime, connection.GetReliabilitySystem().GetRoundTripTime() * 1000.0f );
 		
 		const float sendRate = flowControl.GetSendRate();
 		
@@ -179,18 +189,30 @@ int main( int argc, char * argv[] )
 				break;
 		}
 
-		// detect connection, connection failed...
+		// handle changes in connection state
 
-		if ( !connected && connection.IsConnected() )
+		if ( mode == Server )
 		{
-			printf( "client connected to server\n" );
-			connected = true;
+			if ( connected && !connection.IsConnected() && mode == Server )
+			{
+				printf( "flow control reset\n" );
+				flowControl.Reset();
+				connected = false;
+			}
 		}
-		
-		if ( !connected && connection.ConnectFailed() )
+		else
 		{
-			printf( "connection failed\n" );
-			break;
+			if ( !connected && connection.IsConnected() )
+			{
+				printf( "client connected to server\n" );
+				connected = true;
+			}
+		
+			if ( !connected && connection.ConnectFailed() )
+			{
+				printf( "connection failed\n" );
+				break;
+			}
 		}
 		
 		// update connection
