@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>currentDocument</key>
+	<string>makefile.apple</string>
+	<key>documents</key>
+	<array>
+		<dict>
+			<key>filename</key>
+			<string>Net.h</string>
+			<key>lastUsed</key>
+			<date>2008-09-24T22:33:06Z</date>
+		</dict>
+		<dict>
+			<key>filename</key>
+			<string>Test.cpp</string>
+			<key>lastUsed</key>
+			<date>2008-09-24T22:33:05Z</date>
+		</dict>
+		<dict>
+			<key>filename</key>
+			<string>Client.cpp</string>
+			<key>lastUsed</key>
+			<date>2008-09-24T22:33:07Z</date>
+		</dict>
+		<dict>
+			<key>filename</key>
+			<string>Server.cpp</string>
+			<key>lastUsed</key>
+			<date>2008-09-24T22:33:06Z</date>
+		</dict>
+		<dict>
+			<key>filename</key>
+			<string>Node.cpp</string>
+			<key>lastUsed</key>
+			<date>2008-09-24T22:33:06Z</date>
+		</dict>
+		<dict>
+			<key>filename</key>
+			<string>makefile.apple</string>
+			<key>lastUsed</key>
+			<date>2008-09-24T22:33:07Z</date>
+			<key>selected</key>
+			<true/>
+		</dict>
+	</array>
+	<key>fileHierarchyDrawerWidth</key>
+	<integer>200</integer>
+	<key>metaData</key>
+	<dict>
+		<key>makefile.apple</key>
+		<dict>
+			<key>caret</key>
+			<dict>
+				<key>column</key>
+				<integer>0</integer>
+				<key>line</key>
+				<integer>6</integer>
+			</dict>
+			<key>firstVisibleColumn</key>
+			<integer>0</integer>
+			<key>firstVisibleLine</key>
+			<integer>0</integer>
+		</dict>
+	</dict>
+	<key>openDocuments</key>
+	<array>
+		<string>makefile.apple</string>
+	</array>
+	<key>showFileHierarchyDrawer</key>
+	<true/>
+	<key>windowFrame</key>
+	<string>{{205, 4}, {1075, 774}}</string>
+</dict>
+</plist>
