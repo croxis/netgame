@@ -168,8 +168,15 @@ namespace net
 	{
 	public:
 	
-		Socket()
+		enum Options
 		{
+			NonBlocking = 1,
+			Broadcast = 2
+		};
+	
+		Socket( int options = NonBlocking )
+		{
+			this->options = options;
 			socket = 0;
 		}
 	
@@ -209,27 +216,43 @@ namespace net
 
 			// set non-blocking io
 
-			#if PLATFORM == PLATFORM_MAC || PLATFORM == PLATFORM_UNIX
+			if ( options & NonBlocking )
+			{
+				#if PLATFORM == PLATFORM_MAC || PLATFORM == PLATFORM_UNIX
 		
-				int nonBlocking = 1;
-				if ( fcntl( socket, F_SETFL, O_NONBLOCK, nonBlocking ) == -1 )
-				{
-					printf( "failed to set non-blocking socket\n" );
-					Close();
-					return false;
-				}
+					int nonBlocking = 1;
+					if ( fcntl( socket, F_SETFL, O_NONBLOCK, nonBlocking ) == -1 )
+					{
+						printf( "failed to set non-blocking socket\n" );
+						Close();
+						return false;
+					}
 			
-			#elif PLATFORM == PLATFORM_WINDOWS
+				#elif PLATFORM == PLATFORM_WINDOWS
 		
-				DWORD nonBlocking = 1;
-				if ( ioctlsocket( socket, FIONBIO, &nonBlocking ) != 0 )
+					DWORD nonBlocking = 1;
+					if ( ioctlsocket( socket, FIONBIO, &nonBlocking ) != 0 )
+					{
+						printf( "failed to set non-blocking socket\n" );
+						Close();
+						return false;
+					}
+
+				#endif
+			}
+			
+			// set broadcast socket
+			
+			if ( options & Broadcast )
+			{
+				int enable = 1;
+				if ( setsockopt( socket, SOL_SOCKET, SO_BROADCAST, (const char*) &enable, sizeof( enable ) ) < 0 )
 				{
-					printf( "failed to set non-blocking socket\n" );
+					printf( "failed to set socket to broadcast\n" );
 					Close();
 					return false;
 				}
-
-			#endif
+			}
 		
 			return true;
 		}
@@ -304,6 +327,7 @@ namespace net
 	private:
 	
 		int socket;
+		int options;
 	};
 	
 	// connection
@@ -1823,6 +1847,7 @@ namespace net
 	public:
 		
 		Beacon( unsigned int protocolId, unsigned int listenerPort, unsigned int serverPort )
+			: socket( Socket::Broadcast )
 		{
 			this->protocolId = protocolId;
 			this->listenerPort = listenerPort;
@@ -1861,7 +1886,8 @@ namespace net
 			WriteInteger( packet, 0 );
 			WriteInteger( packet + 4, protocolId );
 			WriteInteger( packet + 8, serverPort );
-			socket.Send( Address(255,255,255,255,listenerPort), packet, 12 );
+			if ( !socket.Send( Address(255,255,255,255,listenerPort), packet, 12 ) )
+				printf( "failed to send broadcast packet\n" );
 			Address sender;
 			while ( socket.Receive( sender, packet, 256 ) );
 		}
