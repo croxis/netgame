@@ -22,5 +22,8 @@ acks : Acks
 flow : FlowControl
 	./FlowControl
 
+flowclient : FlowControl
+	./FlowControl 127.0.0.1
+
 clean:
 	rm -f FlowControl Acks Client Server Test

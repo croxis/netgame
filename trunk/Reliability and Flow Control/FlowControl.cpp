@@ -101,6 +101,29 @@ const int PacketSize = 256;
 
 int main( int argc, char * argv[] )
 {
+	// parse command line
+
+	enum Mode
+	{
+		Client,
+		Server
+	};
+
+	Mode mode = Server;
+	Address address;
+
+	if ( argc >= 2 )
+	{
+		int a,b,c,d;
+		if ( sscanf( argv[1], "%d.%d.%d.%d", &a, &b, &c, &d ) )
+		{
+			mode = Client;
+			address = Address(a,b,c,d,ServerPort);
+		}
+	}
+
+	// initialize
+
 	if ( !InitializeSockets() )
 	{
 		printf( "failed to initialize sockets\n" );
@@ -108,25 +131,31 @@ int main( int argc, char * argv[] )
 	}
 
 	ReliableConnection connection( ProtocolId, TimeOut );
+
+	const int port = mode == Server ? ServerPort : ClientPort;
 	
-	if ( !connection.Start( ClientPort ) )
+	if ( !connection.Start( port ) )
 	{
-		printf( "could not start connection on port %d\n", ClientPort );
+		printf( "could not start connection on port %d\n", port );
 		return 1;
 	}
 	
-	connection.Connect( Address(127,0,0,1,ServerPort ) );
+	if ( mode == Client )
+		connection.Connect( Address(127,0,0,1,ServerPort ) );
+	else
+		connection.Listen();
 	
 	FlowControl flowControl;
 
 	bool connected = false;
 	float sendAccumulator = 0.0f;
+	float printRttAccumulator = 0.0f;
 	
 	while ( true )
 	{
 		// update flow control
 		
-		flowControl.Update( DeltaTime, 300.0f );//connection.GetRoundTripTime() );
+		flowControl.Update( DeltaTime, connection.GetReliabilitySystem().GetRoundTripTime() );
 		
 		const float sendRate = flowControl.GetSendRate();
 		
@@ -161,6 +190,15 @@ int main( int argc, char * argv[] )
 		{
 			printf( "connection failed\n" );
 			break;
+		}
+		
+		// print rtt every second
+		
+		printRttAccumulator += DeltaTime;
+		if ( printRttAccumulator > 1.0f )
+		{
+			printf( "rtt = %.2f ms\n", connection.GetReliabilitySystem().GetRoundTripTime() * 1000.0f );
+			printRttAccumulator = 0.0f;
 		}
 		
 		// update connection

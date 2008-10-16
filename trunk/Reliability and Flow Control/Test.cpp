@@ -1180,7 +1180,7 @@ void test_sequence_wrap_around()
 		}
 		allPacketsAcked = totalClientAcks >= PacketCount && totalServerAcks >= PacketCount;
 
-		// note: test above is not sufficient to check if we have actually received 100% acks ...
+		// note: test above is not very specific, we can do better...
 
 		client.Update( DeltaTime );
 		server.Update( DeltaTime );
