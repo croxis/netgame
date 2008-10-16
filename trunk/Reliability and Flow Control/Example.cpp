@@ -11,6 +11,8 @@
 
 #include "Net.h"
 
+#define SHOW_ACKS
+
 using namespace std;
 using namespace net;
 
@@ -48,11 +50,13 @@ public:
 		{
 			if ( rtt > RTT_Threshold )
 			{
-				printf( "bad mode (rtt = %.2f)\n", rtt );
+				printf( "*** dropping to bad mode ***\n" );
 				mode = Bad;
 				if ( good_conditions_time < 10.0f && penalty_time < 60.0f )
 				{
 					penalty_time *= 2.0f;
+					if ( penalty_time > 60.0f )
+						penalty_time = 60.0f;
 					printf( "penalty time increased to %.1f\n", penalty_time );
 				}
 				good_conditions_time = 0.0f;
@@ -66,6 +70,8 @@ public:
 			if ( penalty_reduction_accumulator > 10.0f && penalty_time > 1.0f )
 			{
 				penalty_time /= 2.0f;
+				if ( penalty_time < 1.0f )
+					penalty_time = 1.0f;
 				printf( "penalty time reduced to %.1f\n", penalty_time );
 				penalty_reduction_accumulator = 0.0f;
 			}
@@ -80,7 +86,7 @@ public:
 				
 			if ( good_conditions_time > penalty_time )
 			{
-				printf( "good mode (rtt = %.2f)\n", rtt );
+				printf( "*** upgrading to good mode ***\n" );
 				good_conditions_time = 0.0f;
 				penalty_reduction_accumulator = 0.0f;
 				mode = Good;
@@ -157,12 +163,10 @@ int main( int argc, char * argv[] )
 		connection.Listen();
 	
 	bool connected = false;
-	float accumulator = 0.0f;
+	float sendAccumulator = 0.0f;
+	float statsAccumulator = 0.0f;
 	
 	FlowControl flowControl;
-
-	bool connected = false;
-	float sendAccumulator = 0.0f;
 	
 	while ( true )
 	{
@@ -174,6 +178,13 @@ int main( int argc, char * argv[] )
 		const float sendRate = flowControl.GetSendRate();
 
 		// detect changes in connection state
+
+		if ( mode == Server && connected && !connection.IsConnected() )
+		{
+			flowControl.Reset();
+			printf( "reset flow control\n" );
+			connected = false;
+		}
 
 		if ( !connected && connection.IsConnected() )
 		{
@@ -207,9 +218,20 @@ int main( int argc, char * argv[] )
 				break;
 		}
 		
-		// process acks
+		// show packets that were acked this frame
 		
-		// ...
+		#ifdef SHOW_ACKS
+		unsigned int * acks = NULL;
+		int ack_count = 0;
+		connection.GetReliabilitySystem().GetAcks( &acks, ack_count );
+		if ( ack_count > 0 )
+		{
+			printf( "acks: %d", acks[0] );
+			for ( int i = 1; i < ack_count; ++i )
+				printf( ",%d", acks[i] );
+			printf( "\n" );
+		}
+		#endif
 
 		// update connection
 		
@@ -217,9 +239,9 @@ int main( int argc, char * argv[] )
 
 		// show connection stats
 		
-		accumulator += DeltaTime;
+		statsAccumulator += DeltaTime;
 
-		if ( accumulator > 0.25f && connection.IsConnected() )
+		while ( statsAccumulator >= 0.25f && connection.IsConnected() )
 		{
 			float rtt = connection.GetReliabilitySystem().GetRoundTripTime();
 			
@@ -235,7 +257,7 @@ int main( int argc, char * argv[] )
 				sent_packets > 0.0f ? (float) lost_packets / (float) sent_packets * 100.0f : 0.0f, 
 				sent_bandwidth, acked_bandwidth );
 			
-			accumulator = 0.0f;
+			statsAccumulator -= 0.25f;
 		}
 
 		wait( DeltaTime );

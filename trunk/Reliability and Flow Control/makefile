@@ -5,25 +5,17 @@ flags = -Wall -DDEBUG # -O3
 % : %.cpp Net.h
 	g++ $< -o $@ ${flags}
 
-all : FlowControl Acks Client Server Test
+all : Example Test
 
 test : Test
 	./Test
 	
-server : Reliability
-	./Reliability
+server : Example
+	./Example
 
-client : Reliability
-	./Reliability 127.0.0.1
+client : Example
+	./Example 127.0.0.1
 	
-acks : Acks
-	./Acks
-	
-flow : FlowControl
-	./FlowControl
-
-flowclient : FlowControl
-	./FlowControl 127.0.0.1
-
 clean:
-	rm -f FlowControl Acks Client Server Test
+	rm -f Test Example
+	
