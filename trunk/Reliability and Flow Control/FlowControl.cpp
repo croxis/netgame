@@ -34,7 +34,8 @@ public:
 		{
 			if ( rtt > RTT_Threshold )
 			{
-				printf( "dropping to bad mode\n" );
+				printf( "rtt = %.2f\n", rtt );
+				printf( " -> dropping to bad mode!\n" );
 				mode = Bad;
 				if ( good_conditions_time < 10.0f && penalty_time < 60.0f )
 				{
@@ -63,7 +64,8 @@ public:
 				
 			if ( good_conditions_time > penalty_time )
 			{
-				printf( "returning to good mode\n" );
+				printf( "rtt = %.2f\n", rtt );
+				printf( " -> returning to good mode\n" );
 				good_conditions_time = 0.0f;
 				mode = Good;
 				return;
@@ -149,13 +151,12 @@ int main( int argc, char * argv[] )
 
 	bool connected = false;
 	float sendAccumulator = 0.0f;
-	float printRttAccumulator = 0.0f;
 	
 	while ( true )
 	{
 		// update flow control
 		
-		flowControl.Update( DeltaTime, connection.GetReliabilitySystem().GetRoundTripTime() );
+		flowControl.Update( DeltaTime, connection.GetReliabilitySystem().GetRoundTripTime() * 1000.0f );
 		
 		const float sendRate = flowControl.GetSendRate();
 		
@@ -190,15 +191,6 @@ int main( int argc, char * argv[] )
 		{
 			printf( "connection failed\n" );
 			break;
-		}
-		
-		// print rtt every second
-		
-		printRttAccumulator += DeltaTime;
-		if ( printRttAccumulator > 1.0f )
-		{
-			printf( "rtt = %.2f ms\n", connection.GetReliabilitySystem().GetRoundTripTime() * 1000.0f );
-			printRttAccumulator = 0.0f;
 		}
 		
 		// update connection

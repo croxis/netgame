@@ -884,7 +884,6 @@ namespace net
 		
 		void UpdateStats()
 		{
-			assert( rtt_maximum == 1.0f );
 			int sent_bytes_per_second = 0;
 			for ( PacketQueue::iterator itor = sentQueue.begin(); itor != sentQueue.end(); ++itor )
 				sent_bytes_per_second += itor->size;
@@ -898,6 +897,8 @@ namespace net
 					acked_bytes_per_second += itor->size;
 				}
 			}
+			sent_bytes_per_second /= rtt_maximum;
+			acked_bytes_per_second /= rtt_maximum;
 			sent_bandwidth = sent_bytes_per_second * ( 8 / 1000.0f );
 			acked_bandwidth = acked_bytes_per_second * ( 8 / 1000.0f );
 		}
