@@ -45,7 +45,6 @@ void test_node_join()
 	{
 		node.Update( DeltaTime );
 		mesh.Update( DeltaTime );
-		wait( DeltaTime );
 	}
 	
 	check( !node.JoinFailed() );
@@ -73,7 +72,6 @@ void test_node_join_fail()
 	while ( node.IsJoining() )
 	{
 		node.Update( DeltaTime );
-		wait( DeltaTime );
 	}
 	
 	check( node.JoinFailed() );
@@ -104,7 +102,6 @@ void test_node_join_busy()
 	{
 		node.Update( DeltaTime );
 		mesh.Update( DeltaTime );
-		wait( DeltaTime );
 	}
 	
 	check( !node.JoinFailed() );
@@ -118,7 +115,6 @@ void test_node_join_busy()
 		node.Update( DeltaTime );
 		busy.Update( DeltaTime );
 		mesh.Update( DeltaTime );
-		wait( DeltaTime );
 	}
 	
 	check( busy.JoinFailed() );
@@ -167,7 +163,6 @@ void test_node_join_multi()
 		if ( !joining )
 			break;
 		mesh.Update( DeltaTime );
-		wait( DeltaTime );
 	}
 
 	for ( int i = 0; i < MaxNodes; ++i )
@@ -204,7 +199,6 @@ void test_node_rejoin()
 	{
 		node.Update( DeltaTime );
 		mesh.Update( DeltaTime );
-		wait( DeltaTime );
 	}
 	
 	node.Stop();
@@ -214,7 +208,6 @@ void test_node_rejoin()
 	{
 		node.Update( DeltaTime );
 		mesh.Update( DeltaTime );
-		wait( DeltaTime );
 	}
 		
 	check( !node.JoinFailed() );
@@ -247,7 +240,6 @@ void test_node_timeout()
 	{
 		node.Update( DeltaTime );
 		mesh.Update( DeltaTime );
-		wait( DeltaTime );
 	}
 	
 	check( !node.JoinFailed() );
@@ -263,7 +255,6 @@ void test_node_timeout()
 	while ( mesh.IsNodeConnected( localNodeId ) )
 	{
 		mesh.Update( DeltaTime );
-		wait( DeltaTime );
 	}
 	
 	check( !mesh.IsNodeConnected( localNodeId ) );
@@ -271,7 +262,6 @@ void test_node_timeout()
 	while ( node.IsConnected() )
 	{
 		node.Update( DeltaTime );
-		wait( DeltaTime );
 	}
 	
 	check( !node.IsConnected() );
@@ -352,8 +342,6 @@ void test_node_payload()
 		server.Update( DeltaTime );
 
 		mesh.Update( DeltaTime );
-		
-		wait( DeltaTime );
 	}
 
 	check( client.IsConnected() );
@@ -387,7 +375,6 @@ void test_mesh_restart()
 	{
 		node.Update( DeltaTime );
 		mesh.Update( DeltaTime );
-		wait( DeltaTime );
 	}
 	
 	check( !node.JoinFailed() );
@@ -398,7 +385,6 @@ void test_mesh_restart()
 	while ( node.IsConnected() )
 	{
 		node.Update( DeltaTime );
-		wait( DeltaTime );
 	}
 
 	check( mesh.Start( MeshPort ) );
@@ -408,7 +394,6 @@ void test_mesh_restart()
 	{
 		node.Update( DeltaTime );
 		mesh.Update( DeltaTime );
-		wait( DeltaTime );
 	}
 	
 	check( !node.JoinFailed() );
@@ -454,7 +439,6 @@ void test_mesh_nodes()
 		if ( !joining )
 			break;
 		mesh.Update( DeltaTime );
-		wait( DeltaTime );
 	}
 
 	for ( int i = 0; i < MaxNodes; ++i )
@@ -478,7 +462,6 @@ void test_mesh_nodes()
 		if ( allConnected )
 			break;
 		mesh.Update( DeltaTime );
-		wait( DeltaTime );
 	}
 
 	// verify each node has correct addresses for all nodes
@@ -521,7 +504,6 @@ void test_mesh_nodes()
 			break;
 			
 		mesh.Update( DeltaTime );
-		wait( DeltaTime );
 	}
 	
 	for ( int i = 1; i < MaxNodes; ++i )
@@ -550,7 +532,6 @@ void test_mesh_nodes()
 		if ( !joining )
 			break;
 		mesh.Update( DeltaTime );
-		wait( DeltaTime );
 	}
 
 	for ( int i = 0; i < MaxNodes; ++i )
@@ -572,7 +553,6 @@ void test_mesh_nodes()
 		if ( allConnected )
 			break;
 		mesh.Update( DeltaTime );
-		wait( DeltaTime );
 	}
 
 	for ( int i = 0; i < MaxNodes; ++i )
