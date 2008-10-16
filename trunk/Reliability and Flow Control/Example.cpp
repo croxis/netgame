@@ -1,5 +1,5 @@
 /*
-	Reliability Example
+	Reliability and Flow Control Example
 	From "Networking for Game Programmers" - http://www.gaffer.org/networking-for-game-programmers
 	Author: Glenn Fiedler <gaffer@gaffer.org>
 */
@@ -11,7 +11,7 @@
 
 #include "Net.h"
 
-#define SHOW_ACKS
+//#define SHOW_ACKS
 
 using namespace std;
 using namespace net;
