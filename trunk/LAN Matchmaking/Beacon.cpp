@@ -24,15 +24,29 @@ const float TimeOut = 10.0f;
 
 int main( int argc, char * argv[] )
 {
+	// initialize sockets
+	
 	if ( !InitializeSockets() )
 	{
 		printf( "failed to initialize sockets\n" );
 		return 1;
 	}
 
+	// process command line
+	
+	char hostname[64+1] = "hostname";
+	gethostname( hostname, 64 );
+	hostname[64] = '\0';
+	
+	if ( argc == 2 )
+	{
+		strncpy( hostname, argv[1], 64 );
+		hostname[64] = '\0';
+	}
+	
 	// create beacon (sends broadcast packets to the LAN...)
 	
-	Beacon beacon( ProtocolId, ListenerPort, ServerPort );
+	Beacon beacon( hostname, ProtocolId, ListenerPort, ServerPort );
 	
 	if ( !beacon.Start( BeaconPort ) )
 	{
@@ -57,20 +71,20 @@ int main( int argc, char * argv[] )
 	while ( true )
 	{
 		accumulator += DeltaTime;
-		while ( accumulator >= 1.0f )
+		while ( accumulator >= 1.5f )
 		{
 			printf( "---------------------------------------------\n" );
 			const int entryCount = listener.GetEntryCount();
 			for ( int i = 0; i < entryCount; ++i )
 			{
 				const ListenerEntry & entry = listener.GetEntry( i );
-				printf( "%d.%d.%d.%d:%d - %s\n", 
+				printf( "%d.%d.%d.%d:%d -> %s\n", 
 					entry.address.GetA(), entry.address.GetB(), 
 					entry.address.GetC(), entry.address.GetD(), 
 					entry.address.GetPort(), entry.name );
 			}
 			printf( "---------------------------------------------\n" );
-			accumulator -= 1.0f;
+			accumulator -= 1.5f;
 		}
 		
 		beacon.Update( DeltaTime );

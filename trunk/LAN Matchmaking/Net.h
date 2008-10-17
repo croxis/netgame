@@ -1846,9 +1846,11 @@ namespace net
 	{
 	public:
 		
-		Beacon( unsigned int protocolId, unsigned int listenerPort, unsigned int serverPort )
+		Beacon( const char name[], unsigned int protocolId, unsigned int listenerPort, unsigned int serverPort )
 			: socket( Socket::Broadcast | Socket::NonBlocking )
 		{
+			strncpy( this->name, name, 64 );
+			this->name[64] = '\0';
 			this->protocolId = protocolId;
 			this->listenerPort = listenerPort;
 			this->serverPort = serverPort;
@@ -1882,11 +1884,14 @@ namespace net
 		void Update( float deltaTime )
 		{
 			assert( running );
-			unsigned char packet[256];
+			unsigned char packet[12+1+64];
 			WriteInteger( packet, 0 );
 			WriteInteger( packet + 4, protocolId );
 			WriteInteger( packet + 8, serverPort );
-			if ( !socket.Send( Address(255,255,255,255,listenerPort), packet, 12 ) )
+			packet[12] = (unsigned char) strlen( name );
+			assert( packet[12] < 63);
+			memcpy( packet + 13, name, strlen( name ) );
+			if ( !socket.Send( Address(255,255,255,255,listenerPort), packet, 12 + 1 + packet[12] ) )
 				printf( "failed to send broadcast packet\n" );
 			Address sender;
 			while ( socket.Receive( sender, packet, 256 ) );
@@ -1894,6 +1899,7 @@ namespace net
 		
 	private:
 		
+		char name[64+1];
 		unsigned int protocolId;
 		unsigned int listenerPort;
 		unsigned int serverPort;
@@ -1906,8 +1912,9 @@ namespace net
 	
 	struct ListenerEntry
 	{
-		char name[64];
+		char name[64+1];
 		Address address;
+		float timeoutAccumulator;
 	};
 
 	// listener
@@ -1918,10 +1925,10 @@ namespace net
 	{
 	public:
 		
-		Listener( unsigned int protocolId, unsigned int listenerPort )
+		Listener( unsigned int protocolId, float timeout = 10.0f )
 		{
 			this->protocolId = protocolId;
-			this->listenerPort = listenerPort;
+			this->timeout = timeout;
 			running = false;
 			ClearData();
 		}
@@ -1961,20 +1968,43 @@ namespace net
 				int bytes_read = socket.Receive( sender, packet, 256 );
 				if ( bytes_read == 0 )
 					break;
-				if ( bytes_read != 12 )
+				if ( bytes_read < 13 )
 					continue;
-				printf( "received packet\n" );
 				unsigned int packet_zero;
 				unsigned int packet_protocolId;
 				unsigned int packet_serverPort;
+				unsigned char packet_stringLength;
 				ReadInteger( packet, packet_zero );
 				ReadInteger( packet + 4, packet_protocolId );
 				ReadInteger( packet + 8, packet_serverPort );
+				packet_stringLength = packet[12];
 				if ( packet_zero != 0 )
 					continue;
 				if ( packet_protocolId != protocolId )
 					continue;
-				printf( " -> found server!!!\n" );
+				if ( packet_stringLength > 63 )
+					continue;
+				if ( packet_stringLength + 12 + 1 > bytes_read )
+					continue;
+				ListenerEntry entry;
+				memcpy( entry.name, packet + 13, packet_stringLength );
+				entry.name[packet_stringLength] = '\0';
+				entry.address = Address( sender.GetA(), sender.GetB(), sender.GetC(), sender.GetD(), packet_serverPort );
+				entry.timeoutAccumulator = 0.0f;
+				ListenerEntry * existingEntry = FindEntry( entry );
+				if ( existingEntry )
+					existingEntry->timeoutAccumulator = 0.0f;
+				else
+					entries.push_back( entry );
+			}
+			std::vector<ListenerEntry>::iterator itor = entries.begin();
+			while ( itor != entries.end() )
+			{
+				itor->timeoutAccumulator += deltaTime;
+				if ( itor->timeoutAccumulator > timeout )
+					itor = entries.erase( itor );
+				else
+					++itor;
 			}
 		}
 		
@@ -1990,6 +2020,18 @@ namespace net
 			return entries[index];
 		}
 		
+	protected:
+		
+		ListenerEntry * FindEntry( const ListenerEntry & entry )
+		{
+			for ( int i = 0; i < (int) entries.size(); ++i )
+			{
+				if ( entries[i].address == entry.address && strcmp( entries[i].name, entry.name ) == 0 )
+					return &entries[i];
+			}
+			return NULL;
+		}
+		
 	private:
 		
 		void ClearData()
@@ -1999,7 +2041,7 @@ namespace net
 		
 		std::vector<ListenerEntry> entries;
 		unsigned int protocolId;
-		unsigned int listenerPort;
+		float timeout;
 		bool running;
 		Socket socket;
 	};
