@@ -2,147 +2,33 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>currentDocument</key>
-	<string>Net.h</string>
 	<key>documents</key>
 	<array>
 		<dict>
 			<key>filename</key>
 			<string>Net.h</string>
 			<key>lastUsed</key>
-			<date>2008-10-16T18:09:59Z</date>
-			<key>selected</key>
-			<true/>
+			<date>2008-10-17T17:36:05Z</date>
 		</dict>
 		<dict>
 			<key>filename</key>
-			<string>Test.cpp</string>
+			<string>Beacon.cpp</string>
 			<key>lastUsed</key>
-			<date>2008-10-16T18:09:59Z</date>
-		</dict>
-		<dict>
-			<key>filename</key>
-			<string>Client.cpp</string>
-			<key>lastUsed</key>
-			<date>2008-10-16T17:47:34Z</date>
-		</dict>
-		<dict>
-			<key>filename</key>
-			<string>Server.cpp</string>
-			<key>lastUsed</key>
-			<date>2008-10-16T17:47:39Z</date>
-		</dict>
-		<dict>
-			<key>filename</key>
-			<string>Node.cpp</string>
-			<key>lastUsed</key>
-			<date>2008-10-16T18:06:57Z</date>
+			<date>2008-10-17T17:36:04Z</date>
 		</dict>
 		<dict>
 			<key>filename</key>
 			<string>makefile</string>
 			<key>lastUsed</key>
-			<date>2008-10-16T17:47:28Z</date>
+			<date>2008-10-17T17:36:06Z</date>
+			<key>selected</key>
+			<true/>
 		</dict>
 	</array>
 	<key>fileHierarchyDrawerWidth</key>
 	<integer>200</integer>
 	<key>metaData</key>
-	<dict>
-		<key>Client.cpp</key>
-		<dict>
-			<key>caret</key>
-			<dict>
-				<key>column</key>
-				<integer>49</integer>
-				<key>line</key>
-				<integer>63</integer>
-			</dict>
-			<key>firstVisibleColumn</key>
-			<integer>0</integer>
-			<key>firstVisibleLine</key>
-			<integer>0</integer>
-		</dict>
-		<key>Net.h</key>
-		<dict>
-			<key>caret</key>
-			<dict>
-				<key>column</key>
-				<integer>3</integer>
-				<key>line</key>
-				<integer>1044</integer>
-			</dict>
-			<key>firstVisibleColumn</key>
-			<integer>0</integer>
-			<key>firstVisibleLine</key>
-			<integer>1036</integer>
-		</dict>
-		<key>Node.cpp</key>
-		<dict>
-			<key>caret</key>
-			<dict>
-				<key>column</key>
-				<integer>0</integer>
-				<key>line</key>
-				<integer>84</integer>
-			</dict>
-			<key>firstVisibleColumn</key>
-			<integer>0</integer>
-			<key>firstVisibleLine</key>
-			<integer>65</integer>
-		</dict>
-		<key>Server.cpp</key>
-		<dict>
-			<key>caret</key>
-			<dict>
-				<key>column</key>
-				<integer>0</integer>
-				<key>line</key>
-				<integer>47</integer>
-			</dict>
-			<key>firstVisibleColumn</key>
-			<integer>0</integer>
-			<key>firstVisibleLine</key>
-			<integer>49</integer>
-		</dict>
-		<key>Test.cpp</key>
-		<dict>
-			<key>caret</key>
-			<dict>
-				<key>column</key>
-				<integer>23</integer>
-				<key>line</key>
-				<integer>463</integer>
-			</dict>
-			<key>firstVisibleColumn</key>
-			<integer>0</integer>
-			<key>firstVisibleLine</key>
-			<integer>429</integer>
-		</dict>
-		<key>makefile</key>
-		<dict>
-			<key>caret</key>
-			<dict>
-				<key>column</key>
-				<integer>0</integer>
-				<key>line</key>
-				<integer>6</integer>
-			</dict>
-			<key>firstVisibleColumn</key>
-			<integer>0</integer>
-			<key>firstVisibleLine</key>
-			<integer>0</integer>
-		</dict>
-	</dict>
-	<key>openDocuments</key>
-	<array>
-		<string>Node.cpp</string>
-		<string>makefile</string>
-		<string>Test.cpp</string>
-		<string>Net.h</string>
-		<string>Client.cpp</string>
-		<string>Server.cpp</string>
-	</array>
+	<dict/>
 	<key>showFileHierarchyDrawer</key>
 	<true/>
 	<key>windowFrame</key>
