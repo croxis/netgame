@@ -81,7 +81,7 @@ int main( int argc, char * argv[] )
 			printf( "received packet from %d.%d.%d.%d:%d (%d bytes)\n", sender.GetA(), sender.GetB(), sender.GetC(), sender.GetD(), sender.GetPort(), bytes_read );
 		}
 		
-		wait( 1.0f );
+		wait_seconds( 1.0f );
 	}
 	
 	// shutdown socket layer

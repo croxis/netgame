@@ -46,7 +46,7 @@ namespace net
 
 #if PLATFORM == PLATFORM_WINDOWS
 
-	void wait( float seconds )
+	void wait_seconds( float seconds )
 	{
 		Sleep( (int) ( seconds * 1000.0f ) );
 	}
@@ -54,7 +54,7 @@ namespace net
 #else
 
 	#include <unistd.h>
-	void wait( float seconds ) { usleep( (int) ( seconds * 1000000.0f ) ); }
+	void wait_seconds( float seconds ) { usleep( (int) ( seconds * 1000000.0f ) ); }
 
 #endif
 
