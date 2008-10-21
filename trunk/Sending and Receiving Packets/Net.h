@@ -24,7 +24,8 @@
 #if PLATFORM == PLATFORM_WINDOWS
 
 	#include <winsock2.h>
-	#pragma comment( lib, "wsock32.lib" )
+#pragma comment( lib, "wsock32.lib" )
+#pragma warning( disable : 4996  ) // get rid of all secure crt warning. (sscanf_s)
 
 #elif PLATFORM == PLATFORM_MAC || PLATFORM == PLATFORM_UNIX
 
@@ -114,7 +115,7 @@ namespace net
 	
 		bool operator == ( const Address & other ) const
 		{
-			return address == other.address && port == other.port;
+			return this->address == other.address && this->port == other.port;
 		}
 	
 		bool operator != ( const Address & other ) const
@@ -134,7 +135,30 @@ namespace net
 	{
 		#if PLATFORM == PLATFORM_WINDOWS
 	    WSADATA WsaData;
-		return WSAStartup( MAKEWORD(2,2), &WsaData ) != NO_ERROR;
+		int err_code = WSAStartup( MAKEWORD(2,2), &WsaData ) != NO_ERROR;
+
+		// I get error from outputdebug string using sysinternal debugview tool.
+		switch(err_code)
+		{
+		case WSASYSNOTREADY:
+			OutputDebugString(L"The underlying network subsystem is not ready for network communication.");
+			break;
+		case WSAVERNOTSUPPORTED:
+			OutputDebugString(L"The version of Windows Sockets support requested is not provided by this particular Windows Sockets implementation.");
+			break;
+		case WSAEINPROGRESS:
+			OutputDebugString(L"A blocking Windows Sockets 1.1 operation is in progress");
+			break;
+		case WSAEPROCLIM:
+			OutputDebugString(L"A limit on the number of tasks supported by the Windows Sockets implementation has been reached.");
+			break;
+		case WSAEFAULT:
+			OutputDebugString(L"The lpWSAData parameter is not a valid pointer.");
+			break;
+		default:
+			break;
+		}
+		return err_code == 0;
 		#else
 		return true;
 		#endif

@@ -146,9 +146,33 @@ namespace net
 
 	inline bool InitializeSockets()
 	{
-		#if PLATFORM == PLATFORM_WINDOWS
-	    WSADATA WsaData;
-		return WSAStartup( MAKEWORD(2,2), &WsaData ) != NO_ERROR;
+		#if PLATFORM == PLATFORM_WINDOWS 
+		WSADATA WsaData;
+
+		int err_code = WSAStartup( MAKEWORD(2,2), &WsaData ) != NO_ERROR;
+
+		// I get error from outputdebug string using sysinternal debugview tool.
+		switch(err_code)
+		{
+		case WSASYSNOTREADY:
+			OutputDebugString(L"The underlying network subsystem is not ready for network communication.");
+			break;
+		case WSAVERNOTSUPPORTED:
+			OutputDebugString(L"The version of Windows Sockets support requested is not provided by this particular Windows Sockets implementation.");
+			break;
+		case WSAEINPROGRESS:
+			OutputDebugString(L"A blocking Windows Sockets 1.1 operation is in progress");
+			break;
+		case WSAEPROCLIM:
+			OutputDebugString(L"A limit on the number of tasks supported by the Windows Sockets implementation has been reached.");
+			break;
+		case WSAEFAULT:
+			OutputDebugString(L"The lpWSAData parameter is not a valid pointer.");
+			break;
+		default:
+			break;
+		}
+		return err_code == 0;
 		#else
 		return true;
 		#endif
@@ -438,30 +462,41 @@ namespace net
 			assert( running );
 			if ( address.GetAddress() == 0 )
 				return false;
-			unsigned char packet[size+4];
+			unsigned char* packet = new unsigned char[size+4];
 			packet[0] = (unsigned char) ( protocolId >> 24 );
 			packet[1] = (unsigned char) ( ( protocolId >> 16 ) & 0xFF );
 			packet[2] = (unsigned char) ( ( protocolId >> 8 ) & 0xFF );
 			packet[3] = (unsigned char) ( ( protocolId ) & 0xFF );
 			memcpy( &packet[4], data, size );
-			return socket.Send( address, packet, size + 4 );
+			bool res = socket.Send( address, packet, size + 4 );
+			delete [] packet;
+			return res;
 		}
 		
 		virtual int ReceivePacket( unsigned char data[], int size )
 		{
 			assert( running );
-			unsigned char packet[size+4];
+			unsigned char* packet = new unsigned char[size+4];
 			Address sender;
 			int bytes_read = socket.Receive( sender, packet, size + 4 );
 			if ( bytes_read == 0 )
+			{
+				delete [] packet;
 				return 0;
+			}
 			if ( bytes_read <= 4 )
+			{
+				delete [] packet;
 				return 0;
+			}
 			if ( packet[0] != (unsigned char) ( protocolId >> 24 ) || 
 				 packet[1] != (unsigned char) ( ( protocolId >> 16 ) & 0xFF ) ||
 				 packet[2] != (unsigned char) ( ( protocolId >> 8 ) & 0xFF ) ||
 				 packet[3] != (unsigned char) ( protocolId & 0xFF ) )
+			{
+				delete [] packet;
 				return 0;
+			}
 			if ( mode == Server && !IsConnected() )
 			{
 				printf( "server accepts connection from client %d.%d.%d.%d:%d\n", 
@@ -479,9 +514,11 @@ namespace net
 					OnConnect();
 				}
 				timeoutAccumulator = 0.0f;
-				memcpy( data, &packet[4], bytes_read - 4 );
-				return bytes_read - 4;
+				memcpy( data, &packet[4], size - 4 );
+				delete [] packet;
+				return size - 4;
 			}
+			delete [] packet;
 			return 0;
 		}
 		
