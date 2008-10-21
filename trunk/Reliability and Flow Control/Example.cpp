@@ -168,7 +168,7 @@ int main( int argc, char * argv[] )
 			statsAccumulator -= 0.25f;
 		}
 
-		wait( DeltaTime );
+		wait_seconds( DeltaTime );
 	}
 	
 	ShutdownSockets();
