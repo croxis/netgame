@@ -3,7 +3,7 @@
 	ProjectType="Visual C++"
 	Version="8,00"
 	Name="Server"
-	ProjectGUID="{5B927FCB-5BB4-4FFF-B69E-B10F5D199E66}"
+	ProjectGUID="{F6EB9892-DF30-4F5C-ACB1-EE7EEA08029E}"
 	RootNamespace="Simple"
 	Keyword="Win32Proj"
 	>

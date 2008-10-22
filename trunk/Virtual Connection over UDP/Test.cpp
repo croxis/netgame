@@ -17,7 +17,7 @@ using namespace net;
 #ifdef DEBUG
 #define check assert
 #else
-#define check(n) if ( !n ) { printf( "check failed\n" ); exit(1); }
+#define check(n) if ( !(n) ) { printf( "check failed\n" ); exit(1); }
 #endif
 
 void test_join()
@@ -30,7 +30,7 @@ void test_join()
 	const int ClientPort = 30001;
 	const int ProtocolId = 0x11112222;
 	const float DeltaTime = 0.001f;
-	const float TimeOut = 0.1f;
+	const float TimeOut = 1.5f;
 	
 	Connection client( ProtocolId, TimeOut );
 	Connection server( ProtocolId, TimeOut );

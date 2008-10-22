@@ -150,13 +150,38 @@ namespace net
 
 	inline bool InitializeSockets()
 	{
-		#if PLATFORM == PLATFORM_WINDOWS
-	    WSADATA WsaData;
-		return WSAStartup( MAKEWORD(2,2), &WsaData ) != NO_ERROR;
-		#else
+#if PLATFORM == PLATFORM_WINDOWS 
+		WSADATA WsaData;
+
+		int err_code = WSAStartup( MAKEWORD(2,2), &WsaData ) != NO_ERROR;
+
+		// I get error from outputdebug string using sysinternal debugview tool.
+		switch(err_code)
+		{
+		case WSASYSNOTREADY:
+			OutputDebugString(L"The underlying network subsystem is not ready for network communication.");
+			break;
+		case WSAVERNOTSUPPORTED:
+			OutputDebugString(L"The version of Windows Sockets support requested is not provided by this particular Windows Sockets implementation.");
+			break;
+		case WSAEINPROGRESS:
+			OutputDebugString(L"A blocking Windows Sockets 1.1 operation is in progress");
+			break;
+		case WSAEPROCLIM:
+			OutputDebugString(L"A limit on the number of tasks supported by the Windows Sockets implementation has been reached.");
+			break;
+		case WSAEFAULT:
+			OutputDebugString(L"The lpWSAData parameter is not a valid pointer.");
+			break;
+		default:
+			break;
+		}
+		return err_code == 0;
+#else
 		return true;
-		#endif
+#endif
 	}
+
 
 	inline void ShutdownSockets()
 	{
@@ -982,7 +1007,10 @@ namespace net
 			WriteHeader( packet, seq, ack, ack_bits );
 			memcpy( packet + header, data, size );
 			if ( !Connection::SendPacket( packet, size + header ) )
+			{
 				return false;
+				delete [] packet;
+			}
 			reliabilitySystem.PacketSent( size );
 			delete [] packet;
 			return true;
@@ -1652,7 +1680,7 @@ namespace net
 			while ( true )
 			{
 				Address sender;
-				int size = socket.Receive( sender, data, sizeof(data) );
+				int size = socket.Receive( sender, data, maxPacketSize*sizeof(unsigned char) );
 				if ( !size )
 					break;
 				ProcessPacket( sender, data, size );

@@ -32,7 +32,7 @@ void test_node_join()
 	const int ProtocolId = 0x12345678;
 	const float DeltaTime = 0.01f;
 	const float SendRate = 0.01f;
-	const float TimeOut = 1.0f;
+	const float TimeOut = 2.0f;
 	
 	Mesh mesh( ProtocolId, MaxNodes, SendRate, TimeOut );
 	check( mesh.Start( MeshPort ) );

@@ -1675,7 +1675,7 @@ namespace net
 			while ( true )
 			{
 				Address sender;
-				int size = socket.Receive( sender, data, sizeof(data) );
+				int size = socket.Receive( sender, data, maxPacketSize*sizeof(unsigned char) );
 				if ( !size )
 					break;
 				ProcessPacket( sender, data, size );
