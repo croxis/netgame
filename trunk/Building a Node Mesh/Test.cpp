@@ -32,7 +32,7 @@ void test_node_join()
 	const int ProtocolId = 0x12345678;
 	const float DeltaTime = 0.01f;
 	const float SendRate = 0.01f;
-	const float TimeOut = 2.0f;
+	const float TimeOut = 10.0f;
 	
 	Mesh mesh( ProtocolId, MaxNodes, SendRate, TimeOut );
 	check( mesh.Start( MeshPort ) );
@@ -62,8 +62,8 @@ void test_node_join_fail()
 	const int NodePort = 30001;
 	const int ProtocolId = 0x12345678;
 	const float DeltaTime = 0.01f;
-	const float SendRate = 0.001f;
-	const float TimeOut = 0.1f;
+	const float SendRate = 0.01f;
+	const float TimeOut = 1.0f;
 	
 	Node node( ProtocolId, SendRate, TimeOut );
 	check( node.Start( NodePort ) );
@@ -89,7 +89,7 @@ void test_node_join_busy()
 	const int ProtocolId = 0x12345678;
 	const float DeltaTime = 0.001f;
 	const float SendRate = 0.001f;
-	const float TimeOut = 0.1f;
+	const float TimeOut = 10.0f;
 	
 	Mesh mesh( ProtocolId, MaxNodes, SendRate, TimeOut );
 	check( mesh.Start( MeshPort ) );
@@ -106,7 +106,7 @@ void test_node_join_busy()
 	
 	check( !node.JoinFailed() );
 
-	Node busy( ProtocolId, SendRate, TimeOut );
+	Node busy( ProtocolId, SendRate, 1.0f );
 	check( busy.Start( NodePort + 1 ) );
 	
 	busy.Join( Address(127,0,0,1,MeshPort) );
@@ -283,7 +283,7 @@ void test_node_payload()
 	const int ProtocolId = 0x12345678;
 	const float DeltaTime = 0.01f;
 	const float SendRate = 0.01f;
-	const float TimeOut = 1.0f;
+	const float TimeOut = 10.0f;
 
 	Mesh mesh( ProtocolId, MaxNodes, SendRate, TimeOut );
 	check( mesh.Start( MeshPort ) );
@@ -304,6 +304,9 @@ void test_node_payload()
 	
 	while ( !serverReceivedPacketFromClient || !clientReceivedPacketFromServer )
 	{
+//		if ( !client.IsConnected() && !server.IsConnected() )
+//			break;
+		
 		if ( client.IsConnected() )
 		{
 			unsigned char packet[] = "client to server";
@@ -342,6 +345,8 @@ void test_node_payload()
 		server.Update( DeltaTime );
 
 		mesh.Update( DeltaTime );
+		
+		wait_seconds( 0.001f );
 	}
 
 	check( client.IsConnected() );
@@ -362,7 +367,7 @@ void test_mesh_restart()
 	const int ProtocolId = 0x12345678;
 	const float DeltaTime = 0.001f;
 	const float SendRate = 0.001f;
-	const float TimeOut = 0.1f;
+	const float TimeOut = 10.0f;
 	
 	Mesh mesh( ProtocolId, MaxNodes, SendRate, TimeOut );
 	check( mesh.Start( MeshPort ) );
@@ -412,7 +417,7 @@ void test_mesh_nodes()
 	const int ProtocolId = 0x12345678;
 	const float DeltaTime = 0.01f;
 	const float SendRate = 0.01f;
-	const float TimeOut = 1.0f;
+	const float TimeOut = 10.0f;
 	
 	Mesh mesh( ProtocolId, MaxNodes, SendRate, TimeOut );
 	check( mesh.Start( MeshPort ) );

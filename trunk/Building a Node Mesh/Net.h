@@ -150,38 +150,34 @@ namespace net
 
 	inline bool InitializeSockets()
 	{
-#if PLATFORM == PLATFORM_WINDOWS 
+		#if PLATFORM == PLATFORM_WINDOWS 
 		WSADATA WsaData;
-
 		int err_code = WSAStartup( MAKEWORD(2,2), &WsaData ) != NO_ERROR;
-
-		// I get error from outputdebug string using sysinternal debugview tool.
 		switch(err_code)
 		{
-		case WSASYSNOTREADY:
-			OutputDebugString(L"The underlying network subsystem is not ready for network communication.");
-			break;
-		case WSAVERNOTSUPPORTED:
-			OutputDebugString(L"The version of Windows Sockets support requested is not provided by this particular Windows Sockets implementation.");
-			break;
-		case WSAEINPROGRESS:
-			OutputDebugString(L"A blocking Windows Sockets 1.1 operation is in progress");
-			break;
-		case WSAEPROCLIM:
-			OutputDebugString(L"A limit on the number of tasks supported by the Windows Sockets implementation has been reached.");
-			break;
-		case WSAEFAULT:
-			OutputDebugString(L"The lpWSAData parameter is not a valid pointer.");
-			break;
-		default:
-			break;
+			case WSASYSNOTREADY:
+				OutputDebugString(L"The underlying network subsystem is not ready for network communication.");
+				break;
+			case WSAVERNOTSUPPORTED:
+				OutputDebugString(L"The version of Windows Sockets support requested is not provided by this particular Windows Sockets implementation.");
+				break;
+			case WSAEINPROGRESS:
+				OutputDebugString(L"A blocking Windows Sockets 1.1 operation is in progress");
+				break;
+			case WSAEPROCLIM:
+				OutputDebugString(L"A limit on the number of tasks supported by the Windows Sockets implementation has been reached.");
+				break;
+			case WSAEFAULT:
+				OutputDebugString(L"The lpWSAData parameter is not a valid pointer.");
+				break;
+			default:
+				break;
 		}
 		return err_code == 0;
-#else
+		#else
 		return true;
-#endif
+		#endif
 	}
-
 
 	inline void ShutdownSockets()
 	{
@@ -1015,7 +1011,6 @@ namespace net
 			delete [] packet;
 			return true;
 		}	
-
 
 		int ReceivePacket( unsigned char data[], int size )
 		{
