@@ -5,10 +5,16 @@ flags = -Wall -DDEBUG # -O3
 % : %.cpp NetPlatform.h NetLAN.h NetReliability.h NetTransport.h
 	g++ $< -o $@ ${flags}
 
-all : Server
+all : Client Server Test
 
+client : Client
+	./Client
+	
 server : Server
 	./Server
 	
+test : Test
+	./Test
+	
 clean:
-	rm -f Server
+	rm -f Client Server Test

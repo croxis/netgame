@@ -567,7 +567,7 @@ namespace net
 			return nodes[nodeId].address;
 		}
 
-	    int GetMaxAllowedNodes() const
+	    int GetMaxNodes() const
 		{
 			assert( nodes.size() <= 255 );
 			return (int) nodes.size();
@@ -879,7 +879,7 @@ namespace net
 			return nodes[nodeId].address;
 		}
 
-	    int GetMaxAllowedNodes() const
+	    int GetMaxNodes() const
 		{
 			assert( nodes.size() <= 255 );
 			return (int) nodes.size();
@@ -1325,6 +1325,61 @@ namespace net
 		float timeout;
 		bool running;
 		Socket socket;
+	};
+	
+	// lan transport implementation
+	//  + servers are advertized via net beacon
+	//  + lan lobby is filled via net listener
+	//  + a mesh runs on the server IP and manages node connections
+	//  + a node runs on each transport, for the server with the mesh a local node also runs
+	
+	class TransportLAN : public Transport
+	{
+		TransportLAN()
+		{
+			
+		}
+		
+		~TransportLAN()
+		{
+			
+		}
+		
+		bool IsNodeConnected( int nodeId )
+		{
+			
+		}
+		
+		int GetLocalNodeId() const
+		{
+			return 0;
+		}
+		
+		int GetMaxNodes() const
+		{
+			return 0;			
+		}
+
+		bool SendPacket( int nodeId, const unsigned char data[], int size )
+		{
+			return false;
+		}
+		
+		int ReceivePacket( int & nodeId, unsigned char data[], int size )
+		{
+			return 0;
+		}
+
+		class ReliabilitySystem & GetReliability( int nodeId )
+		{
+			static ReliabilitySystem reliabilitySystem;
+			return reliabilitySystem;
+		}
+
+		void Update( float deltaTime )
+		{
+			
+		}
 	};
 }
 

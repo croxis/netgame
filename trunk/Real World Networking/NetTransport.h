@@ -23,7 +23,7 @@ namespace net
 		
 		virtual int GetLocalNodeId() const = 0;
 		
-		virtual int GetMaxAllowedNodes() const = 0;
+		virtual int GetMaxNodes() const = 0;
 
 		virtual bool SendPacket( int nodeId, const unsigned char data[], int size ) = 0;
 		
