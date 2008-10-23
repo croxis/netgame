@@ -427,6 +427,296 @@ void test_connection_payload()
 
 // --------------------------------------------------------
 
+void test_packet_queue()
+{
+	printf( "-----------------------------------------------------\n" );
+	printf( "test packet queue\n" );
+	printf( "-----------------------------------------------------\n" );
+
+	const unsigned int MaximumSequence = 255;
+
+	PacketQueue packetQueue;
+	
+	printf( "check insert back\n" );
+	for ( int i = 0; i < 100; ++i )
+	{
+		PacketData data;
+		data.sequence = i;
+		packetQueue.insert_sorted( data, MaximumSequence );
+		packetQueue.verify_sorted( MaximumSequence );
+	}
+		
+	printf( "check insert front\n" );
+	packetQueue.clear();
+	for ( int i = 100; i < 0; ++i )
+	{
+		PacketData data;
+		data.sequence = i;
+		packetQueue.insert_sorted( data, MaximumSequence );
+		packetQueue.verify_sorted( MaximumSequence );
+	}
+	
+	printf( "check insert random\n" );
+	packetQueue.clear();
+	for ( int i = 100; i < 0; ++i )
+	{
+		PacketData data;
+		data.sequence = rand() & 0xFF;
+		packetQueue.insert_sorted( data, MaximumSequence );
+		packetQueue.verify_sorted( MaximumSequence );
+	}
+
+	printf( "check insert wrap around\n" );
+	packetQueue.clear();
+	for ( int i = 200; i <= 255; ++i )
+	{
+		PacketData data;
+		data.sequence = i;
+		packetQueue.insert_sorted( data, MaximumSequence );
+		packetQueue.verify_sorted( MaximumSequence );
+	}
+	for ( int i = 0; i <= 50; ++i )
+	{
+		PacketData data;
+		data.sequence = i;
+		packetQueue.insert_sorted( data, MaximumSequence );
+		packetQueue.verify_sorted( MaximumSequence );
+	}
+}
+
+void test_reliability_system()
+{
+	printf( "-----------------------------------------------------\n" );
+	printf( "test reliability system\n" );
+	printf( "-----------------------------------------------------\n" );
+	
+	const int MaximumSequence = 255;
+	
+	printf( "check bit index for sequence\n" );
+	check( ReliabilitySystem::bit_index_for_sequence( 99, 100, MaximumSequence ) == 0 );
+	check( ReliabilitySystem::bit_index_for_sequence( 90, 100, MaximumSequence ) == 9 );
+	check( ReliabilitySystem::bit_index_for_sequence( 0, 1, MaximumSequence ) == 0 );
+	check( ReliabilitySystem::bit_index_for_sequence( 255, 0, MaximumSequence ) == 0 );
+	check( ReliabilitySystem::bit_index_for_sequence( 255, 1, MaximumSequence ) == 1 );
+	check( ReliabilitySystem::bit_index_for_sequence( 254, 1, MaximumSequence ) == 2 );
+	check( ReliabilitySystem::bit_index_for_sequence( 254, 2, MaximumSequence ) == 3 );
+	
+	printf( "check generate ack bits\n");
+	PacketQueue packetQueue;
+	for ( int i = 0; i < 32; ++i )
+	{
+		PacketData data;
+		data.sequence = i;
+		packetQueue.insert_sorted( data, MaximumSequence );
+		packetQueue.verify_sorted( MaximumSequence );
+	}
+	check( ReliabilitySystem::generate_ack_bits( 32, packetQueue, MaximumSequence ) == 0xFFFFFFFF );
+	check( ReliabilitySystem::generate_ack_bits( 31, packetQueue, MaximumSequence ) == 0x7FFFFFFF );
+	check( ReliabilitySystem::generate_ack_bits( 33, packetQueue, MaximumSequence ) == 0xFFFFFFFE );
+	check( ReliabilitySystem::generate_ack_bits( 16, packetQueue, MaximumSequence ) == 0x0000FFFF );
+	check( ReliabilitySystem::generate_ack_bits( 48, packetQueue, MaximumSequence ) == 0xFFFF0000 );
+
+	printf( "check generate ack bits with wrap\n");
+	packetQueue.clear();
+	for ( int i = 255 - 31; i <= 255; ++i )
+	{
+		PacketData data;
+		data.sequence = i;
+		packetQueue.insert_sorted( data, MaximumSequence );
+		packetQueue.verify_sorted( MaximumSequence );
+	}
+	check( packetQueue.size() == 32 );
+	check( ReliabilitySystem::generate_ack_bits( 0, packetQueue, MaximumSequence ) == 0xFFFFFFFF );
+	check( ReliabilitySystem::generate_ack_bits( 255, packetQueue, MaximumSequence ) == 0x7FFFFFFF );
+	check( ReliabilitySystem::generate_ack_bits( 1, packetQueue, MaximumSequence ) == 0xFFFFFFFE );
+	check( ReliabilitySystem::generate_ack_bits( 240, packetQueue, MaximumSequence ) == 0x0000FFFF );
+	check( ReliabilitySystem::generate_ack_bits( 16, packetQueue, MaximumSequence ) == 0xFFFF0000 );
+	
+	printf( "check process ack (1)\n" );
+	{
+		PacketQueue pendingAckQueue;
+		for ( int i = 0; i < 33; ++i )
+		{
+			PacketData data;
+			data.sequence = i;
+			data.time = 0.0f;
+			pendingAckQueue.insert_sorted( data, MaximumSequence );
+			pendingAckQueue.verify_sorted( MaximumSequence );
+		}
+		PacketQueue ackedQueue;
+		std::vector<unsigned int> acks;
+		float rtt = 0.0f;
+		unsigned int acked_packets = 0;
+		ReliabilitySystem::process_ack( 32, 0xFFFFFFFF, pendingAckQueue, ackedQueue, acks, acked_packets, rtt, MaximumSequence );
+		check( acks.size() == 33 );
+		check( acked_packets == 33 );
+		check( ackedQueue.size() == 33 );
+		check( pendingAckQueue.size() == 0 );
+		ackedQueue.verify_sorted( MaximumSequence );
+		for ( unsigned int i = 0; i < acks.size(); ++i )
+			check( acks[i] == i );
+		unsigned int i = 0;
+		for ( PacketQueue::iterator itor = ackedQueue.begin(); itor != ackedQueue.end(); ++itor, ++i )
+			check( itor->sequence == i );
+	}
+
+	printf( "check process ack (2)\n" );
+	{
+		PacketQueue pendingAckQueue;
+		for ( int i = 0; i < 33; ++i )
+		{
+			PacketData data;
+			data.sequence = i;
+			data.time = 0.0f;
+			pendingAckQueue.insert_sorted( data, MaximumSequence );
+			pendingAckQueue.verify_sorted( MaximumSequence );
+		}
+		PacketQueue ackedQueue;
+		std::vector<unsigned int> acks;
+		float rtt = 0.0f;
+		unsigned int acked_packets = 0;
+		ReliabilitySystem::process_ack( 32, 0x0000FFFF, pendingAckQueue, ackedQueue, acks, acked_packets, rtt, MaximumSequence );
+		check( acks.size() == 17 );
+		check( acked_packets == 17 );
+		check( ackedQueue.size() == 17 );
+		check( pendingAckQueue.size() == 33 - 17 );
+		ackedQueue.verify_sorted( MaximumSequence );
+		unsigned int i = 0;
+		for ( PacketQueue::iterator itor = pendingAckQueue.begin(); itor != pendingAckQueue.end(); ++itor, ++i )
+			check( itor->sequence == i );
+		i = 0;
+		for ( PacketQueue::iterator itor = ackedQueue.begin(); itor != ackedQueue.end(); ++itor, ++i )
+			check( itor->sequence == i + 16 );
+		for ( unsigned int i = 0; i < acks.size(); ++i )
+			check( acks[i] == i + 16 );
+	}
+
+	printf( "check process ack (3)\n" );
+	{
+		PacketQueue pendingAckQueue;
+		for ( int i = 0; i < 32; ++i )
+		{
+			PacketData data;
+			data.sequence = i;
+			data.time = 0.0f;
+			pendingAckQueue.insert_sorted( data, MaximumSequence );
+			pendingAckQueue.verify_sorted( MaximumSequence );
+		}
+		PacketQueue ackedQueue;
+		std::vector<unsigned int> acks;
+		float rtt = 0.0f;
+		unsigned int acked_packets = 0;
+		ReliabilitySystem::process_ack( 48, 0xFFFF0000, pendingAckQueue, ackedQueue, acks, acked_packets, rtt, MaximumSequence );
+		check( acks.size() == 16 );
+		check( acked_packets == 16 );
+		check( ackedQueue.size() == 16 );
+		check( pendingAckQueue.size() == 16 );
+		ackedQueue.verify_sorted( MaximumSequence );
+		unsigned int i = 0;
+		for ( PacketQueue::iterator itor = pendingAckQueue.begin(); itor != pendingAckQueue.end(); ++itor, ++i )
+			check( itor->sequence == i );
+		i = 0;
+		for ( PacketQueue::iterator itor = ackedQueue.begin(); itor != ackedQueue.end(); ++itor, ++i )
+			check( itor->sequence == i + 16 );
+		for ( unsigned int i = 0; i < acks.size(); ++i )
+			check( acks[i] == i + 16 );
+	}
+	
+	printf( "check process ack wrap around (1)\n" );
+	{
+		PacketQueue pendingAckQueue;
+		for ( int i = 255 - 31; i <= 256; ++i )
+		{
+			PacketData data;
+			data.sequence = i & 0xFF;
+			data.time = 0.0f;
+			pendingAckQueue.insert_sorted( data, MaximumSequence );
+			pendingAckQueue.verify_sorted( MaximumSequence );
+		}
+		check( pendingAckQueue.size() == 33 );
+		PacketQueue ackedQueue;
+		std::vector<unsigned int> acks;
+		float rtt = 0.0f;
+		unsigned int acked_packets = 0;
+		ReliabilitySystem::process_ack( 0, 0xFFFFFFFF, pendingAckQueue, ackedQueue, acks, acked_packets, rtt, MaximumSequence );
+		check( acks.size() == 33 );
+		check( acked_packets == 33 );
+		check( ackedQueue.size() == 33 );
+		check( pendingAckQueue.size() == 0 );
+		ackedQueue.verify_sorted( MaximumSequence );
+		for ( unsigned int i = 0; i < acks.size(); ++i )
+			check( acks[i] == ( (i+255-31) & 0xFF ) );
+		unsigned int i = 0;
+		for ( PacketQueue::iterator itor = ackedQueue.begin(); itor != ackedQueue.end(); ++itor, ++i )
+			check( itor->sequence == ( (i+255-31) & 0xFF ) );
+	}
+
+	printf( "check process ack wrap around (2)\n" );
+	{
+		PacketQueue pendingAckQueue;
+		for ( int i = 255 - 31; i <= 256; ++i )
+		{
+			PacketData data;
+			data.sequence = i & 0xFF;
+			data.time = 0.0f;
+			pendingAckQueue.insert_sorted( data, MaximumSequence );
+			pendingAckQueue.verify_sorted( MaximumSequence );
+		}
+		check( pendingAckQueue.size() == 33 );
+		PacketQueue ackedQueue;
+		std::vector<unsigned int> acks;
+		float rtt = 0.0f;
+		unsigned int acked_packets = 0;
+		ReliabilitySystem::process_ack( 0, 0x0000FFFF, pendingAckQueue, ackedQueue, acks, acked_packets, rtt, MaximumSequence );
+		check( acks.size() == 17 );
+		check( acked_packets == 17 );
+		check( ackedQueue.size() == 17 );
+		check( pendingAckQueue.size() == 33 - 17 );
+		ackedQueue.verify_sorted( MaximumSequence );
+		for ( unsigned int i = 0; i < acks.size(); ++i )
+			check( acks[i] == ( (i+255-15) & 0xFF ) );
+		unsigned int i = 0;
+		for ( PacketQueue::iterator itor = pendingAckQueue.begin(); itor != pendingAckQueue.end(); ++itor, ++i )
+			check( itor->sequence == i + 255 - 31 );
+		i = 0;
+		for ( PacketQueue::iterator itor = ackedQueue.begin(); itor != ackedQueue.end(); ++itor, ++i )
+			check( itor->sequence == ( (i+255-15) & 0xFF ) );
+	}
+
+	printf( "check process ack wrap around (3)\n" );
+	{
+		PacketQueue pendingAckQueue;
+		for ( int i = 255 - 31; i <= 255; ++i )
+		{
+			PacketData data;
+			data.sequence = i & 0xFF;
+			data.time = 0.0f;
+			pendingAckQueue.insert_sorted( data, MaximumSequence );
+			pendingAckQueue.verify_sorted( MaximumSequence );
+		}
+		check( pendingAckQueue.size() == 32 );
+		PacketQueue ackedQueue;
+		std::vector<unsigned int> acks;
+		float rtt = 0.0f;
+		unsigned int acked_packets = 0;
+		ReliabilitySystem::process_ack( 16, 0xFFFF0000, pendingAckQueue, ackedQueue, acks, acked_packets, rtt, MaximumSequence );
+		check( acks.size() == 16 );
+		check( acked_packets == 16 );
+		check( ackedQueue.size() == 16 );
+		check( pendingAckQueue.size() == 16 );
+		ackedQueue.verify_sorted( MaximumSequence );
+		for ( unsigned int i = 0; i < acks.size(); ++i )
+			check( acks[i] == ( (i+255-15) & 0xFF ) );
+		unsigned int i = 0;
+		for ( PacketQueue::iterator itor = pendingAckQueue.begin(); itor != pendingAckQueue.end(); ++itor, ++i )
+			check( itor->sequence == i + 255 - 31 );
+		i = 0;
+		for ( PacketQueue::iterator itor = ackedQueue.begin(); itor != ackedQueue.end(); ++itor, ++i )
+			check( itor->sequence == ( (i+255-15) & 0xFF ) );
+	}
+}
+
+// --------------------------------------------------------
 void test_node_join()
 {
 	printf( "-----------------------------------------------------\n" );
@@ -989,6 +1279,11 @@ void tests()
 	test_connection_join_busy();
 	test_connection_rejoin();
 	test_connection_payload();
+	
+	test_packet_queue();
+	test_reliability_system();
+	
+	// ...
 	
 	test_node_join();
 	test_node_join_fail();
