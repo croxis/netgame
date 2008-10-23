@@ -90,7 +90,7 @@ int main( int argc, char * argv[] )
 		beacon.Update( DeltaTime );
 		listener.Update( DeltaTime );
 		
-		wait_seconds( DeltaTime );
+		wait( DeltaTime );
 	}
 	
 	ShutdownSockets();

@@ -25,7 +25,6 @@
 
 	#include <winsock2.h>
 	#pragma comment( lib, "wsock32.lib" )
-	#pragma warning( disable : 4996  ) // get rid of all secure crt warning. (sscanf_s)
 
 #elif PLATFORM == PLATFORM_MAC || PLATFORM == PLATFORM_UNIX
 
@@ -53,7 +52,7 @@ namespace net
 
 #if PLATFORM == PLATFORM_WINDOWS
 
-	void wait_seconds( float seconds )
+	void wait( float seconds )
 	{
 		Sleep( (int) ( seconds * 1000.0f ) );
 	}
@@ -61,7 +60,7 @@ namespace net
 #else
 
 	#include <unistd.h>
-	void wait_seconds( float seconds ) { usleep( (int) ( seconds * 1000000.0f ) ); }
+	void wait( float seconds ) { usleep( (int) ( seconds * 1000000.0f ) ); }
 
 #endif
 
@@ -460,46 +459,36 @@ namespace net
 				}
 			}
 		}
-
+		
 		virtual bool SendPacket( const unsigned char data[], int size )
 		{
 			assert( running );
 			if ( address.GetAddress() == 0 )
 				return false;
-			unsigned char * packet = new unsigned char[size+4];
+			unsigned char packet[size+4];
 			packet[0] = (unsigned char) ( protocolId >> 24 );
 			packet[1] = (unsigned char) ( ( protocolId >> 16 ) & 0xFF );
 			packet[2] = (unsigned char) ( ( protocolId >> 8 ) & 0xFF );
 			packet[3] = (unsigned char) ( ( protocolId ) & 0xFF );
 			memcpy( &packet[4], data, size );
-			bool res = socket.Send( address, packet, size + 4 );
-			delete [] packet;
-			return res;
+			return socket.Send( address, packet, size + 4 );
 		}
+		
 		virtual int ReceivePacket( unsigned char data[], int size )
 		{
 			assert( running );
-			unsigned char * packet = new unsigned char[size+4];
+			unsigned char packet[size+4];
 			Address sender;
 			int bytes_read = socket.Receive( sender, packet, size + 4 );
 			if ( bytes_read == 0 )
-			{
-				delete [] packet;
 				return 0;
-			}
 			if ( bytes_read <= 4 )
-			{
-				delete [] packet;
 				return 0;
-			}
 			if ( packet[0] != (unsigned char) ( protocolId >> 24 ) || 
-				packet[1] != (unsigned char) ( ( protocolId >> 16 ) & 0xFF ) ||
-				packet[2] != (unsigned char) ( ( protocolId >> 8 ) & 0xFF ) ||
-				packet[3] != (unsigned char) ( protocolId & 0xFF ) )
-			{
-				delete [] packet;
+				 packet[1] != (unsigned char) ( ( protocolId >> 16 ) & 0xFF ) ||
+				 packet[2] != (unsigned char) ( ( protocolId >> 8 ) & 0xFF ) ||
+				 packet[3] != (unsigned char) ( protocolId & 0xFF ) )
 				return 0;
-			}
 			if ( mode == Server && !IsConnected() )
 			{
 				printf( "server accepts connection from client %d.%d.%d.%d:%d\n", 
@@ -518,10 +507,8 @@ namespace net
 				}
 				timeoutAccumulator = 0.0f;
 				memcpy( data, &packet[4], bytes_read - 4 );
-				delete [] packet;
 				return bytes_read - 4;
 			}
-			delete [] packet;
 			return 0;
 		}
 		
@@ -1002,7 +989,7 @@ namespace net
 		}
 		
 		// overriden functions from "Connection"
-
+				
 		bool SendPacket( const unsigned char data[], int size )
 		{
 			#ifdef NET_UNIT_TEST
@@ -1013,36 +1000,29 @@ namespace net
 			}
 			#endif
 			const int header = 12;
-			unsigned char * packet = new unsigned char[header+size];
+			unsigned char packet[header+size];
 			unsigned int seq = reliabilitySystem.GetLocalSequence();
 			unsigned int ack = reliabilitySystem.GetRemoteSequence();
 			unsigned int ack_bits = reliabilitySystem.GenerateAckBits();
 			WriteHeader( packet, seq, ack, ack_bits );
 			memcpy( packet + header, data, size );
-			if ( !Connection::SendPacket( packet, size + header ) )
+ 			if ( !Connection::SendPacket( packet, size + header ) )
 				return false;
 			reliabilitySystem.PacketSent( size );
-			delete [] packet;
 			return true;
 		}	
-
+		
 		int ReceivePacket( unsigned char data[], int size )
 		{
 			const int header = 12;
 			if ( size <= header )
 				return false;
-			unsigned char * packet = new unsigned char[header+size];
+			unsigned char packet[header+size];
 			int received_bytes = Connection::ReceivePacket( packet, size + header );
 			if ( received_bytes == 0 )
-			{
-				delete [] packet;
 				return false;
-			}
 			if ( received_bytes <= header )
-			{
-				delete [] packet;
 				return false;
-			}
 			unsigned int packet_sequence = 0;
 			unsigned int packet_ack = 0;
 			unsigned int packet_ack_bits = 0;
@@ -1050,7 +1030,6 @@ namespace net
 			reliabilitySystem.PacketReceived( packet_sequence, received_bytes - header );
 			reliabilitySystem.ProcessAck( packet_ack, packet_ack_bits );
 			memcpy( data, packet + header, received_bytes - header );
-			delete [] packet;
 			return received_bytes - header;
 		}
 		
@@ -1438,7 +1417,7 @@ namespace net
 					else if ( nodes[i].mode == NodeState::Connected )
 					{
 						// node is connected: send "update" packets
-						unsigned char * packet = new unsigned char[5+6*nodes.size()];
+						unsigned char packet[5+6*nodes.size()];
 						packet[0] = (unsigned char) ( ( protocolId >> 24 ) & 0xFF );
 						packet[1] = (unsigned char) ( ( protocolId >> 16 ) & 0xFF );
 						packet[2] = (unsigned char) ( ( protocolId >> 8 ) & 0xFF );
@@ -1456,7 +1435,6 @@ namespace net
 							ptr += 6;
 						}
 						socket.Send( nodes[i].address, packet, sizeof(packet) );
-						delete [] packet; 
 					}
 				}
 				sendAccumulator -= sendRate;
@@ -1671,16 +1649,15 @@ namespace net
 
 		void ReceivePackets()
 		{
-			unsigned char * data = new unsigned char[maxPacketSize];
 			while ( true )
 			{
 				Address sender;
-				int size = socket.Receive( sender, data, maxPacketSize*sizeof(unsigned char) );
+				unsigned char data[maxPacketSize];
+				int size = socket.Receive( sender, data, sizeof(data) );
 				if ( !size )
 					break;
 				ProcessPacket( sender, data, size );
 			}
-			delete [] data;
 		}
 
 		void ProcessPacket( const Address & sender, unsigned char data[], int size )
