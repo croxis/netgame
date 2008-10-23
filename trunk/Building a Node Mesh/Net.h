@@ -491,9 +491,9 @@ namespace net
 				return 0;
 			}
 			if ( packet[0] != (unsigned char) ( protocolId >> 24 ) || 
-				packet[1] != (unsigned char) ( ( protocolId >> 16 ) & 0xFF ) ||
-				packet[2] != (unsigned char) ( ( protocolId >> 8 ) & 0xFF ) ||
-				packet[3] != (unsigned char) ( protocolId & 0xFF ) )
+				 packet[1] != (unsigned char) ( ( protocolId >> 16 ) & 0xFF ) ||
+				 packet[2] != (unsigned char) ( ( protocolId >> 8 ) & 0xFF ) ||
+				 packet[3] != (unsigned char) ( protocolId & 0xFF ) )
 			{
 				delete [] packet;
 				return 0;
@@ -519,8 +519,11 @@ namespace net
 				delete [] packet;
 				return bytes_read - 4;
 			}
-			delete [] packet;
-			return 0;
+			else
+			{
+				delete [] packet;
+				return 0;
+			}
 		}
 		
 		int GetHeaderSize() const
@@ -983,8 +986,7 @@ namespace net
 				Stop();
 		}
 		
-		// overriden functions from "Connection"
-				
+		// overridden functions from "Connection"
 
 		bool SendPacket( const unsigned char data[], int size )
 		{
