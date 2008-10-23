@@ -77,7 +77,7 @@ int main( int argc, char * argv[] )
 		node.Update( DeltaTime );
 		mesh.Update( DeltaTime );
 
-		wait_seconds( DeltaTime );
+		wait( DeltaTime );
 	}
 
 	mesh.Stop();	

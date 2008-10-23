@@ -92,7 +92,7 @@ int main( int argc, char * argv[] )
 		if ( masterNode )
 			mesh.Update( DeltaTime );
 
-		wait_seconds( DeltaTime );
+		wait( DeltaTime );
 	}
 
 	if ( masterNode )
