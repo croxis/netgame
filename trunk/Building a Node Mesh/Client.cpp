@@ -70,7 +70,7 @@ int main( int argc, char * argv[] )
 		
 		node.Update( DeltaTime );
 
-		wait( DeltaTime );
+		wait_seconds( DeltaTime );
 	}
 	
 	ShutdownSockets();
