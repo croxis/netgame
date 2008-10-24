@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>documents</key>
+	<array>
+		<dict>
+			<key>filename</key>
+			<string>Net.h</string>
+			<key>lastUsed</key>
+			<date>2008-10-23T20:51:52Z</date>
+		</dict>
+		<dict>
+			<key>filename</key>
+			<string>Beacon.cpp</string>
+			<key>lastUsed</key>
+			<date>2008-10-23T20:56:06Z</date>
+			<key>selected</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>filename</key>
+			<string>makefile</string>
+			<key>lastUsed</key>
+			<date>2008-10-17T17:36:06Z</date>
+		</dict>
+	</array>
+	<key>fileHierarchyDrawerWidth</key>
+	<integer>200</integer>
+	<key>metaData</key>
+	<dict/>
+	<key>showFileHierarchyDrawer</key>
+	<true/>
+	<key>windowFrame</key>
+	<string>{{205, 4}, {1075, 774}}</string>
+</dict>
+</plist>
