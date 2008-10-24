@@ -72,21 +72,27 @@ namespace net
 			return true;
 		}
 		
+		int GetBitsWritten() const
+		{
+			assert( mode == Write );
+			return ( ptr - buffer ) * 8 + bit_index;
+		}
+		
 		bool ReadBits( unsigned int & value, int bits = 32 )
 		{
 			// ...
 			return false;
 		}
 		
+		int GetBitsRead() const
+		{
+			assert( mode == Read );
+			return ( ptr - buffer ) * 8 + bit_index;
+		}
+		
 		Mode GetMode() const
 		{
 			return mode;
-		}
-		
-		int GetBitsWritten() const
-		{
-			assert( mode == Write );
-			return ( ptr - buffer ) * 8 + bit_index;
 		}
 		
 	private:

@@ -82,6 +82,30 @@ void test_bit_packer()
 		check( buffer[3] == 0xFF );
 		check( buffer[4] == 0x00 );		
 	}
+
+	printf( "test read bits (even)\n" );
+	{
+		unsigned char buffer[256];
+		memset( buffer, 0, sizeof( buffer ) );
+		buffer[0] = 0xFF;
+		buffer[1] = 0xFF;
+		buffer[2] = 0xFF;
+		buffer[3] = 0xFF;
+		buffer[4] = 0xFF;
+		buffer[5] = 0xFF;
+		buffer[6] = 0xFF;
+		BitPacker bitpacker( BitPacker::Read, buffer, sizeof(buffer) );
+		unsigned int value;
+		bitpacker.ReadBits( value, 32 );
+		assert( value == 0xFFFFFFFF );
+		check( bitpacker.GetBitsRead() == 32 );
+		bitpacker.ReadBits( value, 16 );
+		assert( value == 0x0000FFFF );
+		check( bitpacker.GetBitsRead() == 32 + 16 );
+		bitpacker.ReadBits( value, 8 );
+		assert( value == 0x000000FF );
+		check( bitpacker.GetBitsRead() == 32 + 16 + 8 );
+	}
 }
 
 void test_arithmetic_coder()
