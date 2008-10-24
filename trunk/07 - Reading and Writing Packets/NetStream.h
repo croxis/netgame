@@ -48,7 +48,7 @@ namespace net
 				const unsigned int mask = ( 1 << bits ) - 1;
 				value &= mask;
 			}
-			while ( true )
+			do
 			{
 				*ptr |= (unsigned char) ( value << bit_index );
 				assert( bit_index < 8 );
@@ -66,9 +66,8 @@ namespace net
 				bits -= bits_written;
 				assert( bits >= 0 );
 				assert( bits <= 32 );
-				if ( bits == 0 )
-					break;
 			}
+			while ( bits > 0 );
 			return true;
 		}
 		
@@ -80,8 +79,40 @@ namespace net
 		
 		bool ReadBits( unsigned int & value, int bits = 32 )
 		{
-			// ...
-			return false;
+			assert( bits > 0 );
+			assert( bits <= 32 );
+			assert( mode == Read );
+			assert( ptr - buffer < bytes );
+			int original_bits = bits;
+			int value_index = 0;
+			value = 0;
+			do
+			{
+				assert( bits >= 0 );
+				assert( bits <= 32 );
+				int bits_to_read = std::min( 8 - bit_index, bits );
+				assert( bits_to_read > 0 );
+				assert( bits_to_read <= 8 );
+				value |= ( *ptr >> bit_index ) << value_index;
+				bits -= bits_to_read;
+				bit_index += bits_to_read;
+				value_index += bits_to_read;
+				assert( value_index >= 0 );
+				assert( value_index <= 32 );
+				if ( bit_index >= 8 )
+				{
+					ptr++;
+					bit_index = 0;
+					assert( ptr - buffer < bytes );
+				}
+			}
+			while ( bits > 0 );
+			if ( original_bits < 32 )
+			{
+				const unsigned int mask = ( 1 << original_bits ) - 1;
+				value &= mask;
+			}
+			return true;
 		}
 		
 		int GetBitsRead() const
