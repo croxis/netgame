@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#define NET_UNIT_TEST
 
 #include "Net.h"
 
