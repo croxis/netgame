@@ -8,6 +8,7 @@
 #define NET_STREAM_H
 
 #include <assert.h>
+#include <algorithm>
 
 namespace net
 {
@@ -16,26 +17,59 @@ namespace net
 	
 	class BitPacker
 	{
+	public:
+		
 		enum Mode
 		{
 			Read,
 			Write
 		};
 		
-		BitPacker( Mode mode, unsigned char * buffer, unsigned int size )
+		BitPacker( Mode mode, void * buffer, unsigned int bytes )
 		{
 			assert( buffer );
-			assert( size >= 4 );
-			assert( size & 3 == 0 );
+			assert( bytes >= 4 );
+			assert( ( bytes & 3 ) == 0 );
 			this->mode = mode;
-			this->buffer = buffer;
-			this->size = size;
+			this->buffer = (unsigned char*) buffer;
+			this->ptr = (unsigned char*) buffer;
+			this->bytes = bytes;
+			bit_index = 0;
 		}
 		
 		bool WriteBits( unsigned int value, int bits = 32 )
 		{
-			// ...
-			return false;
+			assert( bits > 0 );
+			assert( bits <= 32 );
+			assert( mode == Write );
+			assert( ptr - buffer < bytes );
+			if ( bits < 32 )
+			{
+				const unsigned int mask = ( 1 << bits ) - 1;
+				value &= mask;
+			}
+			while ( true )
+			{
+				*ptr |= (unsigned char) ( value << bit_index );
+				assert( bit_index < 8 );
+				const int bits_written = std::min( bits, 8 - bit_index );
+				assert( bits_written > 0 );
+				assert( bits_written <= 8 );
+				bit_index += bits_written;
+				if ( bit_index >= 8 )
+				{
+					ptr++;
+					bit_index = 0;
+					value >>= bits_written;
+					assert( ptr - buffer < bytes );
+				}
+				bits -= bits_written;
+				assert( bits >= 0 );
+				assert( bits <= 32 );
+				if ( bits == 0 )
+					break;
+			}
+			return true;
 		}
 		
 		bool ReadBits( unsigned int & value, int bits = 32 )
@@ -49,10 +83,18 @@ namespace net
 			return mode;
 		}
 		
+		int GetBitsWritten() const
+		{
+			assert( mode == Write );
+			return ( ptr - buffer ) * 8 + bit_index;
+		}
+		
 	private:
 		
+		int bit_index;
+		unsigned char * ptr;
 		unsigned char * buffer;
-		int size;
+		int bytes;
 		Mode mode;
 	};
 	
@@ -69,13 +111,13 @@ namespace net
 			Write
 		};
 		
-		ArithmeticCoder( Mode mode, unsigned char * buffer, unsigned int size )
+		ArithmeticCoder( Mode mode, void * buffer, unsigned int size )
 		{
 			assert( buffer );
 			assert( size >= 4 );
 			assert( size & 3 == 0 );
 			this->mode = mode;
-			this->buffer = buffer;
+			this->buffer = (unsigned char*) buffer;
 			this->size = size;
 		}
 
