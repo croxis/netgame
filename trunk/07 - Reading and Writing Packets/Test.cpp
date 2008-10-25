@@ -271,14 +271,14 @@ void test_stream()
 		const int used_bits = 7 + 1 + 4 + 6 + 2 + 7 + 8 + 8;
 		
  		Stream stream( Stream::Write, buffer, sizeof(buffer) );
-		stream.SerializeByte( a, 0, a );
-		stream.SerializeByte( b, 0, b );
-		stream.SerializeByte( c, 0, c );
-		stream.SerializeByte( d, 0, d );
-		stream.SerializeByte( e, 0, e );
-		stream.SerializeByte( f, 0, f );
-		stream.SerializeByte( g, 0, g );
-		stream.SerializeByte( h, 0, h );
+		check( stream.SerializeByte( a, 0, a ) );
+		check( stream.SerializeByte( b, 0, b ) );
+		check( stream.SerializeByte( c, 0, c ) );
+		check( stream.SerializeByte( d, 0, d ) );
+		check( stream.SerializeByte( e, 0, e ) );
+		check( stream.SerializeByte( f, 0, f ) );
+		check( stream.SerializeByte( g, 0, g ) );
+		check( stream.SerializeByte( h, 0, h ) );
 		check( stream.GetBitsProcessed() == used_bits );
 		check( stream.GetBitsRemaining() == total_bits - used_bits );
 
@@ -292,14 +292,14 @@ void test_stream()
 		unsigned char h_out = 0xFF;
 		
 		stream = Stream( Stream::Read, buffer, sizeof(buffer ) );
-		stream.SerializeByte( a_out, 0, a );
-		stream.SerializeByte( b_out, 0, b );
-		stream.SerializeByte( c_out, 0, c );
-		stream.SerializeByte( d_out, 0, d );
-		stream.SerializeByte( e_out, 0, e );
-		stream.SerializeByte( f_out, 0, f );
-		stream.SerializeByte( g_out, 0, g );
-		stream.SerializeByte( h_out, 0, h );
+		check( stream.SerializeByte( a_out, 0, a ) );
+		check( stream.SerializeByte( b_out, 0, b ) );
+		check( stream.SerializeByte( c_out, 0, c ) );
+		check( stream.SerializeByte( d_out, 0, d ) );
+		check( stream.SerializeByte( e_out, 0, e ) );
+		check( stream.SerializeByte( f_out, 0, f ) );
+		check( stream.SerializeByte( g_out, 0, g ) );
+		check( stream.SerializeByte( h_out, 0, h ) );
 		check( stream.GetBitsProcessed() == used_bits );
 		check( stream.GetBitsRemaining() == total_bits - used_bits );
 		
@@ -331,14 +331,14 @@ void test_stream()
 		const int used_bits = 7 + 1 + 14 + 16 + 2 + 6 + 6 + 7;
 		
  		Stream stream( Stream::Write, buffer, sizeof(buffer) );
-		stream.SerializeShort( a, 0, a );
-		stream.SerializeShort( b, 0, b );
-		stream.SerializeShort( c, 0, c );
-		stream.SerializeShort( d, 0, d );
-		stream.SerializeShort( e, 0, e );
-		stream.SerializeShort( f, 0, f );
-		stream.SerializeShort( g, 0, g );
-		stream.SerializeShort( h, 0, h );
+		check( stream.SerializeShort( a, 0, a ) );
+		check( stream.SerializeShort( b, 0, b ) );
+		check( stream.SerializeShort( c, 0, c ) );
+		check( stream.SerializeShort( d, 0, d ) );
+		check( stream.SerializeShort( e, 0, e ) );
+		check( stream.SerializeShort( f, 0, f ) );
+		check( stream.SerializeShort( g, 0, g ) );
+		check( stream.SerializeShort( h, 0, h ) );
 		check( stream.GetBitsProcessed() == used_bits );
 		check( stream.GetBitsRemaining() == total_bits - used_bits );
 
@@ -352,14 +352,14 @@ void test_stream()
 		unsigned short h_out = 0xFFFF;
 		
 		stream = Stream( Stream::Read, buffer, sizeof(buffer ) );
-		stream.SerializeShort( a_out, 0, a );
-		stream.SerializeShort( b_out, 0, b );
-		stream.SerializeShort( c_out, 0, c );
-		stream.SerializeShort( d_out, 0, d );
-		stream.SerializeShort( e_out, 0, e );
-		stream.SerializeShort( f_out, 0, f );
-		stream.SerializeShort( g_out, 0, g );
-		stream.SerializeShort( h_out, 0, h );
+		check( stream.SerializeShort( a_out, 0, a ) );
+		check( stream.SerializeShort( b_out, 0, b ) );
+		check( stream.SerializeShort( c_out, 0, c ) );
+		check( stream.SerializeShort( d_out, 0, d ) );
+		check( stream.SerializeShort( e_out, 0, e ) );
+		check( stream.SerializeShort( f_out, 0, f ) );
+		check( stream.SerializeShort( g_out, 0, g ) );
+		check( stream.SerializeShort( h_out, 0, h ) );
 		check( stream.GetBitsProcessed() == used_bits );
 		check( stream.GetBitsRemaining() == total_bits - used_bits );
 		
@@ -391,14 +391,14 @@ void test_stream()
 		const int used_bits = 7 + 1 + 14 + 16 + 20 + 6 + 6 + 7;
 		
  		Stream stream( Stream::Write, buffer, sizeof(buffer) );
-		stream.SerializeInteger( a, 0, a );
-		stream.SerializeInteger( b, 0, b );
-		stream.SerializeInteger( c, 0, c );
-		stream.SerializeInteger( d, 0, d );
-		stream.SerializeInteger( e, 0, e );
-		stream.SerializeInteger( f, 0, f );
-		stream.SerializeInteger( g, 0, g );
-		stream.SerializeInteger( h, 0, h );
+		check( stream.SerializeInteger( a, 0, a ) );
+		check( stream.SerializeInteger( b, 0, b ) );
+		check( stream.SerializeInteger( c, 0, c ) );
+		check( stream.SerializeInteger( d, 0, d ) );
+		check( stream.SerializeInteger( e, 0, e ) );
+		check( stream.SerializeInteger( f, 0, f ) );
+		check( stream.SerializeInteger( g, 0, g ) );
+		check( stream.SerializeInteger( h, 0, h ) );
 		check( stream.GetBitsProcessed() == used_bits );
 		check( stream.GetBitsRemaining() == total_bits - used_bits );
 
@@ -412,14 +412,14 @@ void test_stream()
 		unsigned int h_out = 0xFFFFFFFF;
 		
 		stream = Stream( Stream::Read, buffer, sizeof(buffer ) );
-		stream.SerializeInteger( a_out, 0, a );
-		stream.SerializeInteger( b_out, 0, b );
-		stream.SerializeInteger( c_out, 0, c );
-		stream.SerializeInteger( d_out, 0, d );
-		stream.SerializeInteger( e_out, 0, e );
-		stream.SerializeInteger( f_out, 0, f );
-		stream.SerializeInteger( g_out, 0, g );
-		stream.SerializeInteger( h_out, 0, h );
+		check( stream.SerializeInteger( a_out, 0, a ) );
+		check( stream.SerializeInteger( b_out, 0, b ) );
+		check( stream.SerializeInteger( c_out, 0, c ) );
+		check( stream.SerializeInteger( d_out, 0, d ) );
+		check( stream.SerializeInteger( e_out, 0, e ) );
+		check( stream.SerializeInteger( f_out, 0, f ) );
+		check( stream.SerializeInteger( g_out, 0, g ) );
+		check( stream.SerializeInteger( h_out, 0, h ) );
 		check( stream.GetBitsProcessed() == used_bits );
 		check( stream.GetBitsRemaining() == total_bits - used_bits );
 		
@@ -451,14 +451,14 @@ void test_stream()
 		const int used_bits = 8 * 32;
 		
  		Stream stream( Stream::Write, buffer, sizeof(buffer) );
-		stream.SerializeFloat( a );
-		stream.SerializeFloat( b );
-		stream.SerializeFloat( c );
-		stream.SerializeFloat( d );
-		stream.SerializeFloat( e );
-		stream.SerializeFloat( f );
-		stream.SerializeFloat( g );
-		stream.SerializeFloat( h );
+		check( stream.SerializeFloat( a ) );
+		check( stream.SerializeFloat( b ) );
+		check( stream.SerializeFloat( c ) );
+		check( stream.SerializeFloat( d ) );
+		check( stream.SerializeFloat( e ) );
+		check( stream.SerializeFloat( f ) );
+		check( stream.SerializeFloat( g ) );
+		check( stream.SerializeFloat( h ) );
 		check( stream.GetBitsProcessed() == used_bits );
 		check( stream.GetBitsRemaining() == total_bits - used_bits );
 
@@ -472,14 +472,14 @@ void test_stream()
  		float h_out = 0.0f;
 		
 		stream = Stream( Stream::Read, buffer, sizeof(buffer ) );
-		stream.SerializeFloat( a_out );
-		stream.SerializeFloat( b_out );
-		stream.SerializeFloat( c_out );
-		stream.SerializeFloat( d_out );
-		stream.SerializeFloat( e_out );
-		stream.SerializeFloat( f_out );
-		stream.SerializeFloat( g_out );
-		stream.SerializeFloat( h_out );
+		check( stream.SerializeFloat( a_out ) );
+		check( stream.SerializeFloat( b_out ) );
+		check( stream.SerializeFloat( c_out ) );
+		check( stream.SerializeFloat( d_out ) );
+		check( stream.SerializeFloat( e_out ) );
+		check( stream.SerializeFloat( f_out ) );
+		check( stream.SerializeFloat( g_out ) );
+		check( stream.SerializeFloat( h_out ) );
 		check( stream.GetBitsProcessed() == used_bits );
 		check( stream.GetBitsRemaining() == total_bits - used_bits );
 		
@@ -491,6 +491,42 @@ void test_stream()
 		check( f == f_out );
 		check( g == g_out );
 		check( h == h_out );
+	}
+	
+	printf( "stream checkpoint\n" );
+	{
+		unsigned char buffer[256];
+		memset( buffer, 0, sizeof( buffer ) );
+
+		unsigned int a = 123;
+		unsigned int b = 1;
+		unsigned int c = 10004;
+
+ 		Stream stream( Stream::Write, buffer, sizeof(buffer) );
+		check( stream.Checkpoint() );
+		check( stream.SerializeInteger( a, 0, a ) );
+		check( stream.Checkpoint() );
+		check( stream.SerializeInteger( b, 0, b ) );
+		check( stream.Checkpoint() );
+		check( stream.SerializeInteger( c, 0, c ) );
+		check( stream.Checkpoint() );
+
+		unsigned int a_out = 0xFFFFFFFF;
+		unsigned int b_out = 0xFFFFFFFF;
+		unsigned int c_out = 0xFFFFFFFF;
+
+		stream = Stream( Stream::Read, buffer, sizeof(buffer ) );
+		check( stream.Checkpoint() );
+		check( stream.SerializeInteger( a_out, 0, a ) );
+		check( stream.Checkpoint() );
+		check( stream.SerializeInteger( b_out, 0, b ) );
+		check( stream.Checkpoint() );
+		check( stream.SerializeInteger( c_out, 0, c ) );
+		check( stream.Checkpoint() );
+
+		check( a == a_out );
+		check( b == b_out );
+		check( c == c_out );
 	}
 	
 	printf( "stream attribution\n" );
