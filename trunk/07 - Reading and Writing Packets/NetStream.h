@@ -377,11 +377,11 @@ namespace net
 			{
 				printf( "-----------------------------\n" );
 				printf( "dump journal:\n" );
-				BitPacker dump_journal( BitPacker::Read, journal.GetData(), journal.GetBytes() );
-				while ( dump_journal.BitsRemaining() > 6 )
+				BitPacker reader( BitPacker::Read, journal.GetData(), journal.GetBytes() );
+				while ( reader.BitsRemaining() > 6 )
 				{
 					unsigned int token = 0;
-					dump_journal.ReadBits( token, 6 );
+					reader.ReadBits( token, 6 );
 					if ( token == 0 )
 						break;
 					if ( token == 1 )
