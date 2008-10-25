@@ -529,9 +529,9 @@ void test_stream()
 		check( c == c_out );
 	}
 	
-	printf( "stream attribution\n" );
+	printf( "stream journal\n" );
 	{
-		
+		// ...
 	}
 }
 
