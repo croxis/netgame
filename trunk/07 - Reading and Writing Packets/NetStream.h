@@ -262,6 +262,23 @@ namespace net
 		
 		bool Checkpoint()
 		{
+			if ( journal.IsValid() )
+			{
+				unsigned int token = 33;
+				if ( IsWriting() )
+				{
+					journal.WriteBits( token, 6 );
+				}
+				else
+				{
+					journal.ReadBits( token, 6 );
+					if ( token != 1 )
+					{
+						printf( "journal does not contain checkpoint\n" );
+						return false;
+					}
+				}
+			}
 			unsigned int magic = 0x12345678;
 			unsigned int value = magic;
 			if ( !SerializeInteger( value ) )

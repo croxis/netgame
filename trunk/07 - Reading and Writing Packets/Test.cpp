@@ -531,7 +531,40 @@ void test_stream()
 	
 	printf( "stream journal\n" );
 	{
-		// ...
+		unsigned char buffer[256];
+		unsigned char journal[256];
+		memset( buffer, 0, sizeof( buffer ) );
+		memset( journal, 0, sizeof( journal ) );
+
+		unsigned int a = 123;
+		unsigned int b = 1;
+		unsigned int c = 10004;
+
+ 		Stream stream( Stream::Write, buffer, sizeof(buffer), journal, sizeof(journal) );
+		check( stream.Checkpoint() );
+		check( stream.SerializeInteger( a, 0, a ) );
+		check( stream.Checkpoint() );
+		check( stream.SerializeInteger( b, 0, b ) );
+		check( stream.Checkpoint() );
+		check( stream.SerializeInteger( c, 0, c ) );
+		check( stream.Checkpoint() );
+
+		unsigned int a_out = 0xFFFFFFFF;
+		unsigned int b_out = 0xFFFFFFFF;
+		unsigned int c_out = 0xFFFFFFFF;
+
+		stream = Stream( Stream::Read, buffer, sizeof(buffer ) );
+		check( stream.Checkpoint() );
+		check( stream.SerializeInteger( a_out, 0, a ) );
+		check( stream.Checkpoint() );
+		check( stream.SerializeInteger( b_out, 0, b ) );
+		check( stream.Checkpoint() );
+		check( stream.SerializeInteger( c_out, 0, c ) );
+		check( stream.Checkpoint() );
+
+		check( a == a_out );
+		check( b == b_out );
+		check( c == c_out );
 	}
 }
 
