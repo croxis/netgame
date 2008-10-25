@@ -260,6 +260,20 @@ namespace net
 			}
 		}
 		
+		bool Checkpoint()
+		{
+			unsigned int magic = 0x12345678;
+			unsigned int value = magic;
+			if ( !SerializeInteger( value ) )
+				return false;
+			if ( value != magic )
+			{
+				printf( "checkpoint failed!\n" );
+				return false;
+			}
+			return true;
+		}
+		
 		bool IsReading() const
 		{
 			return bitpacker.GetMode() == BitPacker::Read;
