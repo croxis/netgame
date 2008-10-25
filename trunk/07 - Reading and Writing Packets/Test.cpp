@@ -549,6 +549,8 @@ void test_stream()
 		check( stream.SerializeInteger( c, 0, c ) );
 		check( stream.Checkpoint() );
 
+		stream.DumpJournal();
+
 		unsigned int a_out = 0xFFFFFFFF;
 		unsigned int b_out = 0xFFFFFFFF;
 		unsigned int c_out = 0xFFFFFFFF;
@@ -561,7 +563,7 @@ void test_stream()
 		check( stream.Checkpoint() );
 		check( stream.SerializeInteger( c_out, 0, c ) );
 		check( stream.Checkpoint() );
-
+		
 		check( a == a_out );
 		check( b == b_out );
 		check( c == c_out );

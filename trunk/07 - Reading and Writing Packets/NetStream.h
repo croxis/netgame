@@ -28,7 +28,6 @@ namespace net
 		BitPacker( Mode mode, void * buffer, int bytes )
 		{
 			assert( bytes >= 0 );
-			assert( ( bytes & 3 ) == 0 );
 			this->mode = mode;
 			this->buffer = (unsigned char*) buffer;
 			this->ptr = (unsigned char*) buffer;
@@ -110,6 +109,11 @@ namespace net
 			}
 		}
 		
+		void * GetData()
+		{
+			return buffer;
+		}
+		
 		int GetBits() const
 		{
 			return ( ptr - buffer ) * 8 + bit_index;
@@ -160,8 +164,7 @@ namespace net
 		ArithmeticCoder( Mode mode, void * buffer, unsigned int size )
 		{
 			assert( buffer );
-			assert( size >= 4 );
-			assert( size & 3 == 0 );
+			assert( size >= 0 );
 			this->mode = mode;
 			this->buffer = (unsigned char*) buffer;
 			this->size = size;
@@ -299,8 +302,15 @@ namespace net
 			}
 			unsigned int magic = 0x12345678;
 			unsigned int value = magic;
-			if ( !SerializeInteger( value ) )
+			if ( bitpacker.BitsRemaining() < 32 )
+			{
+				printf( "not enough bits remaining for checkpoint\n" );
 				return false;
+			}
+			if ( IsWriting() )
+				bitpacker.WriteBits( value, 32 );
+			else
+				bitpacker.ReadBits( value, 32 );
 			if ( value != magic )
 			{
 				printf( "checkpoint failed!\n" );
@@ -359,6 +369,30 @@ namespace net
 		int GetJournalBytes() const
 		{
 			return journal.GetBytes();
+		}
+		
+		void DumpJournal()
+		{
+			if ( journal.IsValid() )
+			{
+				printf( "-----------------------------\n" );
+				printf( "dump journal:\n" );
+				BitPacker dump_journal( BitPacker::Read, journal.GetData(), journal.GetBytes() );
+				while ( dump_journal.BitsRemaining() > 6 )
+				{
+					unsigned int token = 0;
+					dump_journal.ReadBits( token, 6 );
+					if ( token == 0 )
+						break;
+					if ( token == 1 )
+						printf( " (checkpoint)\n" );
+					else
+						printf( " + %d bits\n", token - 2 );
+				}
+				printf( "-----------------------------\n" );
+			}
+			else
+				printf( "no journal exists!\n" );
 		}
 		
 	private:
