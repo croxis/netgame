@@ -33,15 +33,19 @@ void test_bit_packer()
 		unsigned char buffer[256];
 		memset( buffer, 0, sizeof( buffer ) );
 		BitPacker bitpacker( BitPacker::Write, buffer, sizeof(buffer) );
+
 		bitpacker.WriteBits( 0xFFFFFFFF, 32 );
-		check( bitpacker.GetBitsWritten() == 32 );
+		check( bitpacker.GetBits() == 32 );
+		check( bitpacker.GetBytes() == 4 );
 		check( buffer[0] == 0xFF );
 		check( buffer[1] == 0xFF );
 		check( buffer[2] == 0xFF );
 		check( buffer[3] == 0xFF );
 		check( buffer[4] == 0x00 );
+
 		bitpacker.WriteBits( 0x1111FFFF, 16 );
-		check( bitpacker.GetBitsWritten() == 32 + 16 );
+		check( bitpacker.GetBits() == 32 + 16 );
+		check( bitpacker.GetBytes() == 6 );
 		check( buffer[0] == 0xFF );
 		check( buffer[1] == 0xFF );
 		check( buffer[2] == 0xFF );
@@ -49,8 +53,10 @@ void test_bit_packer()
 		check( buffer[4] == 0xFF );
 		check( buffer[5] == 0xFF );
 		check( buffer[6] == 0x00 );
+
 		bitpacker.WriteBits( 0x111111FF, 8 );
-		check( bitpacker.GetBitsWritten() == 32 + 16 + 8 );
+		check( bitpacker.GetBits() == 32 + 16 + 8 );
+		check( bitpacker.GetBytes() == 7 );
 		check( buffer[0] == 0xFF );
 		check( buffer[1] == 0xFF );
 		check( buffer[2] == 0xFF );
@@ -66,16 +72,27 @@ void test_bit_packer()
 		unsigned char buffer[256];
 		memset( buffer, 0, sizeof( buffer ) );
 		BitPacker bitpacker( BitPacker::Write, buffer, sizeof(buffer) );
+		
 		bitpacker.WriteBits( 0xFFFFFFFF, 9 );
-		check( bitpacker.GetBitsWritten() == 9 );
+		check( bitpacker.GetBytes() == 2 );
+		check( bitpacker.GetBits() == 9 );
+		
 		bitpacker.WriteBits( 0xFFFFFFFF, 1 );
-		check( bitpacker.GetBitsWritten() == 9 + 1 );
+		check( bitpacker.GetBytes() == 2 );
+		check( bitpacker.GetBits() == 9 + 1 );
+		
 		bitpacker.WriteBits( 0xFFFFFFFF, 11 );
-		check( bitpacker.GetBitsWritten() == 9 + 1 + 11 );
+		check( bitpacker.GetBytes() == 3 );		
+		check( bitpacker.GetBits() == 9 + 1 + 11 );
+		
 		bitpacker.WriteBits( 0xFFFFFFFF, 6 );
-		check( bitpacker.GetBitsWritten() == 9 + 1 + 11 + 6 );
+		check( bitpacker.GetBytes() == 4 );
+		check( bitpacker.GetBits() == 9 + 1 + 11 + 6 );
+		
 		bitpacker.WriteBits( 0xFFFFFFFF, 5 );
-		check( bitpacker.GetBitsWritten() == 32 );
+		check( bitpacker.GetBytes() == 4 );
+		check( bitpacker.GetBits() == 32 );
+		
 		check( buffer[0] == 0xFF );
 		check( buffer[1] == 0xFF );
 		check( buffer[2] == 0xFF );
@@ -94,17 +111,23 @@ void test_bit_packer()
 		buffer[4] = 0xFF;
 		buffer[5] = 0xFF;
 		buffer[6] = 0xFF;
+
 		BitPacker bitpacker( BitPacker::Read, buffer, sizeof(buffer) );
 		unsigned int value;
 		bitpacker.ReadBits( value, 32 );
-		assert( value == 0xFFFFFFFF );
-		check( bitpacker.GetBitsRead() == 32 );
+		check( value == 0xFFFFFFFF );
+		check( bitpacker.GetBytes() == 4 );
+		check( bitpacker.GetBits() == 32 );
+
 		bitpacker.ReadBits( value, 16 );
-		assert( value == 0x0000FFFF );
-		check( bitpacker.GetBitsRead() == 32 + 16 );
+		check( value == 0x0000FFFF );
+		check( bitpacker.GetBytes() == 6 );
+		check( bitpacker.GetBits() == 32 + 16 );
+		
 		bitpacker.ReadBits( value, 8 );
-		assert( value == 0x000000FF );
-		check( bitpacker.GetBitsRead() == 32 + 16 + 8 );
+		check( value == 0x000000FF );
+		check( bitpacker.GetBytes() == 7 );
+		check( bitpacker.GetBits() == 32 + 16 + 8 );
 	}
 
 	printf( "read bits (odd)\n" );
@@ -121,23 +144,28 @@ void test_bit_packer()
 
 		unsigned int value;
 		bitpacker.ReadBits( value, 9 );
-		check( bitpacker.GetBitsRead() == 9 );
+		check( bitpacker.GetBytes() == 2 );
+		check( bitpacker.GetBits() == 9 );
 		check( value == ( 1 << 9 ) - 1 );
 
 		bitpacker.ReadBits( value, 1 );
-		check( bitpacker.GetBitsRead() == 9 + 1 );
+		check( bitpacker.GetBytes() == 2 );
+		check( bitpacker.GetBits() == 9 + 1 );
 		check( value == 1 );
 
 		bitpacker.ReadBits( value, 11 );
-		check( bitpacker.GetBitsRead() == 9 + 1 + 11 );
+		check( bitpacker.GetBytes() == 3 );
+		check( bitpacker.GetBits() == 9 + 1 + 11 );
 		check( value == ( 1 << 11 ) - 1 );
 
 		bitpacker.ReadBits( value, 6 );
-		check( bitpacker.GetBitsRead() == 9 + 1 + 11 + 6 );
+		check( bitpacker.GetBytes() == 4 );
+		check( bitpacker.GetBits() == 9 + 1 + 11 + 6 );
 		check( value == ( 1 << 6 ) - 1 );
 
 		bitpacker.ReadBits( value, 5 );
-		check( bitpacker.GetBitsRead() == 32 );
+		check( bitpacker.GetBytes() == 4 );
+		check( bitpacker.GetBits() == 32 );
 		check( value == ( 1 << 5 ) - 1 );
 	}
 
@@ -155,6 +183,10 @@ void test_bit_packer()
 		unsigned int g = 40;
 		unsigned int h = 100;
 		
+		const int total_bits = 256 * 8;
+		const int used_bits = 7 + 1 + 14 + 16 + 20 + 6 + 6 + 7;
+		const int used_bytes = 10;
+
 		BitPacker bitpacker( BitPacker::Write, buffer, sizeof(buffer) );
 		bitpacker.WriteBits( a, 7 );
 		bitpacker.WriteBits( b, 1 );
@@ -164,7 +196,9 @@ void test_bit_packer()
 		bitpacker.WriteBits( f, 6 );
 		bitpacker.WriteBits( g, 6 );
 		bitpacker.WriteBits( h, 7 );
-		check( bitpacker.GetBitsWritten() == 7 + 1 + 14 + 16 + 20 + 6 + 6 + 7 );
+		check( bitpacker.GetBits() == used_bits );
+		check( bitpacker.GetBytes() == used_bytes );
+		check( bitpacker.BitsRemaining() == total_bits - used_bits );
 
 		unsigned int a_out = 0xFFFFFFFF;
 		unsigned int b_out = 0xFFFFFFFF;
@@ -184,7 +218,9 @@ void test_bit_packer()
 		bitpacker.ReadBits( f_out, 6 );
 		bitpacker.ReadBits( g_out, 6 );
 		bitpacker.ReadBits( h_out, 7 );
-		check( bitpacker.GetBitsRead() == 7 + 1 + 14 + 16 + 20 + 6 + 6 + 7 );
+		check( bitpacker.GetBits() == used_bits );
+		check( bitpacker.GetBytes() == used_bytes );
+		check( bitpacker.BitsRemaining() == total_bits - used_bits );
 		
 		check( a == a_out );
 		check( b == b_out );
@@ -195,8 +231,6 @@ void test_bit_packer()
 		check( g == g_out );
 		check( h == h_out );
 	}
-	
-	// todo: test bits remaining
 }
 
 void test_stream()

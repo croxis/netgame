@@ -71,12 +71,6 @@ namespace net
 			while ( bits > 0 );
 		}
 		
-		int GetBitsWritten() const
-		{
-			assert( mode == Write );
-			return ( ptr - buffer ) * 8 + bit_index;
-		}
-		
  		void ReadBits( unsigned int & value, int bits = 32 )
 		{
 			assert( ptr );
@@ -116,15 +110,14 @@ namespace net
 			}
 		}
 		
-		int GetBitsRead() const
+		int GetBits() const
 		{
-			assert( mode == Read );
 			return ( ptr - buffer ) * 8 + bit_index;
 		}
 		
 		int GetBytes() const
 		{
-			return (int) ( ptr - buffer ) + bit_index > 0 ? 8 : 0;
+			return (int) ( ptr - buffer ) + ( bit_index > 0 ? 1 : 0 );
 		}
 		
 		int BitsRemaining() const
@@ -279,10 +272,7 @@ namespace net
 		
 		int GetBitsProcessed() const
 		{
-			if ( IsWriting() )
-				return bitpacker.GetBitsWritten();
-			else
-				return bitpacker.GetBitsRead();
+			return bitpacker.GetBits();
 		}
 		
 		int GetBitsRemaining() const
