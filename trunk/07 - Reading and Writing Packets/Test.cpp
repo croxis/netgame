@@ -458,6 +458,11 @@ void test_stream()
 		check( g == g_out );
 		check( h == h_out );
 	}
+	
+	printf( "stream attribution\n" );
+	{
+		
+	}
 }
 
 int main( int argc, char * argv[] )
