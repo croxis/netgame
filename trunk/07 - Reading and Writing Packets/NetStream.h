@@ -27,8 +27,7 @@ namespace net
 		
 		BitPacker( Mode mode, void * buffer, int bytes )
 		{
-			assert( buffer );
-			assert( bytes >= 4 );
+			assert( bytes >= 0 );
 			assert( ( bytes & 3 ) == 0 );
 			this->mode = mode;
 			this->buffer = (unsigned char*) buffer;
@@ -39,6 +38,8 @@ namespace net
 		
 		void WriteBits( unsigned int value, int bits = 32 )
 		{
+			assert( ptr );
+			assert( buffer );
 			assert( bits > 0 );
 			assert( bits <= 32 );
 			assert( mode == Write );
@@ -78,6 +79,8 @@ namespace net
 		
  		void ReadBits( unsigned int & value, int bits = 32 )
 		{
+			assert( ptr );
+			assert( buffer );
 			assert( bits > 0 );
 			assert( bits <= 32 );
 			assert( mode == Read );
@@ -127,6 +130,11 @@ namespace net
 		Mode GetMode() const
 		{
 			return mode;
+		}
+		
+		bool IsValid() const
+		{
+			return buffer != NULL;
 		}
 		
 	private:
@@ -194,8 +202,9 @@ namespace net
 			Write
 		};
 		
-		Stream( Mode mode, void * buffer, int bytes )
-			: bitpacker( mode == Write ? BitPacker::Write : BitPacker::Read, buffer, bytes )
+		Stream( Mode mode, void * buffer, int bytes, void * journal_buffer = NULL, int journal_bytes = 0 )
+			: bitpacker( mode == Write ? BitPacker::Write : BitPacker::Read, buffer, bytes ), 
+			  journal( mode == Write ? BitPacker::Write : BitPacker::Read, journal_buffer, journal_bytes )
 		{
 		}
 		
@@ -301,6 +310,7 @@ namespace net
 	private:
 		
 		BitPacker bitpacker;
+		BitPacker journal;
 	};
 }
 
