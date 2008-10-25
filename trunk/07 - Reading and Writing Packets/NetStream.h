@@ -122,6 +122,11 @@ namespace net
 			return ( ptr - buffer ) * 8 + bit_index;
 		}
 		
+		int GetBytes() const
+		{
+			return (int) ( ptr - buffer ) + bit_index > 0 ? 8 : 0;
+		}
+		
 		int BitsRemaining() const
 		{
 			return bytes * 8 - ( ( ptr - buffer ) * 8 + bit_index );
@@ -305,6 +310,16 @@ namespace net
 				maximumValue >>= 1;
 			}
 			return 32;
+		}
+		
+		int GetDataBytes() const
+		{
+			return bitpacker.GetBytes();
+		}
+		
+		int GetJournalBytes() const
+		{
+			return journal.GetBytes();
 		}
 		
 	private:
