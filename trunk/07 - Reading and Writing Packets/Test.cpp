@@ -553,7 +553,7 @@ void test_stream()
 		unsigned int b_out = 0xFFFFFFFF;
 		unsigned int c_out = 0xFFFFFFFF;
 
-		stream = Stream( Stream::Read, buffer, sizeof(buffer ) );
+		stream = Stream( Stream::Read, buffer, sizeof(buffer ), journal, sizeof(journal) );
 		check( stream.Checkpoint() );
 		check( stream.SerializeInteger( a_out, 0, a ) );
 		check( stream.Checkpoint() );

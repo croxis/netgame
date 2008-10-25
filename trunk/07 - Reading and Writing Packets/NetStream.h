@@ -228,6 +228,24 @@ namespace net
 		{
 			assert( min < max );
 			const int bits_required = BitsRequired( min, max );
+			if ( journal.IsValid() )
+			{
+				unsigned int token = 2 + bits_required;		// note: 0 = end, 1 = checkpoint, [2,34] = n - 2 bits written
+				if ( IsWriting() )
+				{
+					journal.WriteBits( token, 6 );
+				}
+				else
+				{
+					journal.ReadBits( token, 6 );
+					int bits_written = token - 2;
+					if ( bits_required != bits_written )
+					{
+						printf( "desync read/write: attempting to read %d bits when %d bits were written\n", bits_required, bits_written );
+						return false;
+					}
+				}
+			}
 			if ( bitpacker.BitsRemaining() < bits_required )
 				return false;
 			if ( IsReading() )
@@ -264,7 +282,7 @@ namespace net
 		{
 			if ( journal.IsValid() )
 			{
-				unsigned int token = 33;
+				unsigned int token = 1;		// note: 0 = end, 1 = checkpoint, [2,34] = n - 2 bits written
 				if ( IsWriting() )
 				{
 					journal.WriteBits( token, 6 );
@@ -274,7 +292,7 @@ namespace net
 					journal.ReadBits( token, 6 );
 					if ( token != 1 )
 					{
-						printf( "journal does not contain checkpoint\n" );
+						printf( "desync read/write: checkpoint not present in journal\n" );
 						return false;
 					}
 				}
