@@ -42,7 +42,6 @@ namespace net
 			assert( bits > 0 );
 			assert( bits <= 32 );
 			assert( mode == Write );
-			assert( ptr - buffer < bytes );
 			if ( bits < 32 )
 			{
 				const unsigned int mask = ( 1 << bits ) - 1;
@@ -50,6 +49,7 @@ namespace net
 			}
 			do
 			{
+				assert( ptr - buffer < bytes );
 				*ptr |= (unsigned char) ( value << bit_index );
 				assert( bit_index < 8 );
 				const int bits_written = std::min( bits, 8 - bit_index );
@@ -61,7 +61,6 @@ namespace net
 					ptr++;
 					bit_index = 0;
 					value >>= bits_written;
-					assert( ptr - buffer < bytes );
 				}
 				bits -= bits_written;
 				assert( bits >= 0 );
@@ -77,12 +76,12 @@ namespace net
 			assert( bits > 0 );
 			assert( bits <= 32 );
 			assert( mode == Read );
-			assert( ptr - buffer < bytes );
 			int original_bits = bits;
 			int value_index = 0;
 			value = 0;
 			do
 			{
+				assert( ptr - buffer < bytes );
 				assert( bits >= 0 );
 				assert( bits <= 32 );
 				int bits_to_read = std::min( 8 - bit_index, bits );
@@ -98,7 +97,6 @@ namespace net
 				{
 					ptr++;
 					bit_index = 0;
-					assert( ptr - buffer < bytes );
 				}
 			}
 			while ( bits > 0 );
@@ -209,53 +207,72 @@ namespace net
 		{
 		}
 		
+		bool SerializeBoolean( bool & value )
+		{
+			unsigned int tmp = (unsigned int) value;
+			bool result = SerializeBits( tmp, 1 );
+			value = (bool) tmp;
+			return result;
+		}
+		
+		bool SerializeByte( signed char & value, signed char min = -127, signed char max = +128 )
+		{
+			unsigned int tmp = (unsigned int) ( value + 127 );
+			bool result = SerializeInteger( tmp, (unsigned int ) ( min + 127 ), ( max + 127 ) );
+			value = ( (signed char) tmp ) - 127;
+			return result;
+		}
+
 		bool SerializeByte( unsigned char & value, unsigned char min = 0, unsigned char max = 0xFF )
 		{
-			assert( min < max );
 			unsigned int tmp = (unsigned int) value;
 			bool result = SerializeInteger( tmp, min, max );
 			value = (unsigned char) tmp;
 			return result;
 		}
 
+		bool SerializeShort( signed short & value, signed short min = -32767, signed short max = +32768 )
+		{
+			unsigned int tmp = (unsigned int) ( value + 32767 );
+			bool result = SerializeInteger( tmp, (unsigned int ) ( min + 32767 ), ( max + 32767 ) );
+			value = ( (signed short) tmp ) - 32767;
+			return result;
+		}
+
 		bool SerializeShort( unsigned short & value, unsigned short min = 0, unsigned short max = 0xFFFF )
 		{
-			assert( min < max );
 			unsigned int tmp = (unsigned int) value;
 			bool result = SerializeInteger( tmp, min, max );
 			value = (unsigned short) tmp;
 			return result;
 		}
 		
+		bool SerializeInteger( signed int & value, signed int min = -2147483646, signed int max = +2147483647 )
+		{
+			unsigned int tmp = (unsigned int) ( value + 2147483646 );
+			bool result = SerializeInteger( tmp, (unsigned int ) ( min + 2147483646 ), ( max + 2147483646 ) );
+			value = ( (signed int) tmp ) - 2147483646;
+			return result;
+		}
+
 		bool SerializeInteger( unsigned int & value, unsigned int min = 0, unsigned int max = 0xFFFFFFFF )
 		{
 			assert( min < max );
-			const int bits_required = BitsRequired( min, max );
-			if ( journal.IsValid() )
+			if ( IsWriting() )
 			{
-				unsigned int token = 2 + bits_required;		// note: 0 = end, 1 = checkpoint, [2,34] = n - 2 bits written
-				if ( IsWriting() )
-				{
-					journal.WriteBits( token, 6 );
-				}
-				else
-				{
-					journal.ReadBits( token, 6 );
-					int bits_written = token - 2;
-					if ( bits_required != bits_written )
-					{
-						printf( "desync read/write: attempting to read %d bits when %d bits were written\n", bits_required, bits_written );
-						return false;
-					}
-				}
+				assert( value >= min );
+				assert( value <= max );
 			}
-			if ( bitpacker.BitsRemaining() < bits_required )
-				return false;
+			const int bits_required = BitsRequired( min, max );
+			unsigned int bits = value - min;
+			bool result = SerializeBits( bits, bits_required );
 			if ( IsReading() )
-				bitpacker.ReadBits( value, bits_required );
-			else
-				bitpacker.WriteBits( value, bits_required );
-			return true;
+			{
+				value = bits + min;
+				assert( value >= min );
+				assert( value <= max );
+			}
+			return result;
 		}
 		
 		bool SerializeFloat( float & value )
@@ -268,7 +285,7 @@ namespace net
 			if ( IsReading() )
 			{
 				FloatInt floatInt;
-				if ( !SerializeInteger( floatInt.i ) )
+				if ( !SerializeBits( floatInt.i, 32 ) )
 					return false;
 				value = floatInt.f;
 				return true;
@@ -277,8 +294,39 @@ namespace net
 			{
 				FloatInt floatInt;
 				floatInt.f = value;
-				return SerializeInteger( floatInt.i );
+				return SerializeBits( floatInt.i, 32 );
 			}
+		}
+
+		bool SerializeBits( unsigned int & value, int bits )
+		{
+			assert( bits >= 1 );
+			assert( bits <= 32 );
+			if ( bitpacker.BitsRemaining() < bits )
+				return false;
+			if ( journal.IsValid() )
+			{
+				unsigned int token = 2 + bits;		// note: 0 = end, 1 = checkpoint, [2,34] = n - 2 bits written
+				if ( IsWriting() )
+				{
+					journal.WriteBits( token, 6 );
+				}
+				else
+				{
+					journal.ReadBits( token, 6 );
+					int bits_written = token - 2;
+					if ( bits != bits_written )
+					{
+						printf( "desync read/write: attempting to read %d bits when %d bits were written\n", bits, bits_written );
+						return false;
+					}
+				}
+			}
+			if ( IsReading() )
+				bitpacker.ReadBits( value, bits );
+			else
+				bitpacker.WriteBits( value, bits );
+			return true;
 		}
 		
 		bool Checkpoint()

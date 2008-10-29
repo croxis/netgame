@@ -45,6 +45,9 @@
 #include <list>
 #include <algorithm>
 #include <functional>
+#if PLATFORM != PLATFORM_WINDOWS
+#include <unistd.h>
+#endif
 
 namespace net
 {
@@ -52,15 +55,14 @@ namespace net
 
 #if PLATFORM == PLATFORM_WINDOWS
 
-	void wait_seconds( float seconds )
+	inline void wait_seconds( float seconds )
 	{
 		Sleep( (int) ( seconds * 1000.0f ) );
 	}
 
 #else
 
-	#include <unistd.h>
-	void wait_seconds( float seconds ) { usleep( (int) ( seconds * 1000000.0f ) ); }
+	inline void wait_seconds( float seconds ) { usleep( (int) ( seconds * 1000000.0f ) ); }
 
 #endif
 

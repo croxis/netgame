@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "NetTransport.h"
 #include "NetLAN.h"
 
 using namespace std;
@@ -16,15 +17,56 @@ using namespace net;
 
 int main( int argc, char * argv[] )
 {
-	if ( !InitializeSockets() )
+	// initialize and create transport
+	
+	TransportType type = Transport_LAN;
+	
+	if ( !Transport::Initialize( Transport_LAN ) )
 	{
-		printf( "failed to initialize sockets\n" );
+		printf( "failed to initialize transport layer\n" );
 		return 1;
 	}
-
-	printf( "yo!\n" );
 	
-	ShutdownSockets();
+	Transport * transport = Transport::Create();
+	
+	if ( !transport )
+	{
+		printf( "could not create transport\n" );
+		return 1;
+	}
+	
+	// start server (transport specific)
+	
+	switch ( type )
+	{
+		case Transport_LAN:
+		{
+			TransportLAN * lan_transport = dynamic_cast<TransportLAN*>( transport );
+			char hostname[64+1] = "hostname";
+			GetHostName( hostname, sizeof(hostname) );
+			lan_transport->Listen( hostname );
+		}
+		break;
+		
+		default:
+			break;
+	}
+
+	// main loop
+
+	const float DeltaTime = 1.0f / 30.0f;
+
+	while ( true )
+	{
+		transport->Update( DeltaTime );
+		wait_seconds( DeltaTime );
+	}
+	
+	// shutdown
+	
+	Transport::Destroy( transport );
+	
+	Transport::Shutdown();
 
 	return 0;
 }

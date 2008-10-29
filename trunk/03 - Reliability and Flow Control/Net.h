@@ -25,7 +25,7 @@
 
 	#include <winsock2.h>
 	#pragma comment( lib, "wsock32.lib" )
-	#pragma warning( disable : 4996  ) // get rid of all secure crt warning. (sscanf_s)
+	#pragma warning( disable : 4996 ) // get rid of all secure crt warning. (sscanf_s)
 
 #elif PLATFORM == PLATFORM_MAC || PLATFORM == PLATFORM_UNIX
 

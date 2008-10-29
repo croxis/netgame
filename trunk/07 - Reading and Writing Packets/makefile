@@ -5,13 +5,10 @@ flags = -Wall -DDEBUG # -O3
 % : %.cpp NetStream.h
 	g++ $< -o $@ ${flags}
 
-all : Client Server Test
+all : Example Test
 
-client : Client
-	./Client
-	
-server : Server
-	./Server
+example : Example
+	./Example
 	
 test : Test
 	./Test

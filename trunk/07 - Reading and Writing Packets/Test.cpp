@@ -253,6 +253,66 @@ void test_stream()
 		check( Stream::BitsRequired( 0, 1023 ) == 10 );
 	}
 
+	printf( "serialize boolean\n" );
+	{
+		unsigned char buffer[256];
+		memset( buffer, 0, sizeof( buffer ) );
+		
+		bool a = false;
+		bool b = true;
+		bool c = false;
+		bool d = false;
+		bool e = true;
+		bool f = false;
+		bool g = true;
+		bool h = true;
+		
+		const int total_bits = 256 * 8;
+		const int used_bits = 8;
+		
+ 		Stream stream( Stream::Write, buffer, sizeof(buffer) );
+		check( stream.SerializeBoolean( a ) );
+		check( stream.SerializeBoolean( b ) );
+		check( stream.SerializeBoolean( c ) );
+		check( stream.SerializeBoolean( d ) );
+		check( stream.SerializeBoolean( e ) );
+		check( stream.SerializeBoolean( f ) );
+		check( stream.SerializeBoolean( g ) );
+		check( stream.SerializeBoolean( h ) );
+		check( stream.GetBitsProcessed() == used_bits );
+		check( stream.GetBitsRemaining() == total_bits - used_bits );
+
+		bool a_out = false;
+		bool b_out = false;
+		bool c_out = false;
+		bool d_out = false;
+		bool e_out = false;
+		bool f_out = false;
+		bool g_out = false;
+		bool h_out = false;
+		
+		stream = Stream( Stream::Read, buffer, sizeof(buffer ) );
+		check( stream.SerializeBoolean( a_out ) );
+		check( stream.SerializeBoolean( b_out ) );
+		check( stream.SerializeBoolean( c_out ) );
+		check( stream.SerializeBoolean( d_out ) );
+		check( stream.SerializeBoolean( e_out ) );
+		check( stream.SerializeBoolean( f_out ) );
+		check( stream.SerializeBoolean( g_out ) );
+		check( stream.SerializeBoolean( h_out ) );
+		check( stream.GetBitsProcessed() == used_bits );
+		check( stream.GetBitsRemaining() == total_bits - used_bits );
+		
+		check( a == a_out );
+		check( b == b_out );
+		check( c == c_out );
+		check( d == d_out );
+		check( e == e_out );
+		check( f == f_out );
+		check( g == g_out );
+		check( h == h_out );
+	}
+
 	printf( "serialize byte\n" );
 	{
 		unsigned char buffer[256];
@@ -493,6 +553,69 @@ void test_stream()
 		check( h == h_out );
 	}
 	
+	printf( "serialize signed byte\n" );
+	{
+		unsigned char buffer[256];
+		memset( buffer, 0, sizeof( buffer ) );
+
+		signed char min = -100;
+		signed char max = +100;
+
+ 		Stream stream( Stream::Write, buffer, sizeof(buffer) );
+		for ( signed char i = min; i <= max; ++i )
+			check( stream.SerializeByte( i, min, max ) );
+
+		stream = Stream( Stream::Read, buffer, sizeof(buffer) );
+		for ( signed char i = min; i <= max; ++i )
+		{
+			signed char value = 0;
+			check( stream.SerializeByte( value, min, max ) );
+			check( value == i );
+		}
+	}
+	
+	printf( "serialize signed short\n" );
+	{
+		unsigned char buffer[2048];
+		memset( buffer, 0, sizeof( buffer ) );
+
+		signed short min = -500;
+		signed short max = +500;
+
+ 		Stream stream( Stream::Write, buffer, sizeof(buffer) );
+		for ( signed short i = min; i <= max; ++i )
+			check( stream.SerializeShort( i, min, max ) );
+
+		stream = Stream( Stream::Read, buffer, sizeof(buffer) );
+		for ( signed short i = min; i <= max; ++i )
+		{
+			signed short value = 0;
+			check( stream.SerializeShort( value, min, max ) );
+			check( value == i );
+		}
+	}
+	
+	printf( "serialize signed int\n" );
+	{
+		unsigned char buffer[2048];
+		memset( buffer, 0, sizeof( buffer ) );
+
+		signed int min = -100000;
+		signed int max = +100000;
+
+ 		Stream stream( Stream::Write, buffer, sizeof(buffer) );
+		for ( signed int i = min; i <= max; i += 1000 )
+			check( stream.SerializeInteger( i, min, max ) );
+
+		stream = Stream( Stream::Read, buffer, sizeof(buffer) );
+		for ( signed int i = min; i <= max; i += 1000 )
+		{
+			signed int value = 0;
+			check( stream.SerializeInteger( value, min, max ) );
+			check( value == i );
+		}
+	}
+	
 	printf( "stream checkpoint\n" );
 	{
 		unsigned char buffer[256];
@@ -568,6 +691,8 @@ void test_stream()
 		check( b == b_out );
 		check( c == c_out );
 	}
+	
+	// todo: add test for integer values with non-zero min
 }
 
 int main( int argc, char * argv[] )

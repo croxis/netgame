@@ -9,6 +9,17 @@
 
 namespace net
 {
+	// transport type
+	
+	enum TransportType
+	{
+		Transport_None,
+		Transport_LAN,
+		Transport_RakNet,
+		Transport_OpenTNL,
+		Transport_eNet
+	};
+	
 	// abstract network transport interface
 	//  + implement this interface for different transport layers
 	//  + use the reliability system classes to implement seq/ack based reliability
@@ -17,6 +28,18 @@ namespace net
 	{
 	public:
 
+		// static methods
+		
+		static bool Initialize( TransportType type );
+		
+		static void Shutdown();
+		
+		static Transport * Create();
+		
+		static void Destroy( Transport * transport );
+		
+		// transport interface
+		
 		virtual ~Transport() {};
 		
 		virtual bool IsNodeConnected( int nodeId ) = 0;
@@ -32,7 +55,9 @@ namespace net
 		virtual class ReliabilitySystem & GetReliability( int nodeId ) = 0;
 
 		virtual void Update( float deltaTime ) = 0;
-	};
+		
+		virtual TransportType GetType() const = 0;
+	};	
 }
 
 #endif

@@ -1237,6 +1237,14 @@ namespace net
 		Socket socket;
 	};
 	
+	// get hostname helper
+	
+	inline void GetHostName( char hostname[], int size )
+	{
+		gethostname( hostname, size );
+		hostname[size-1] = '\0';
+	}
+	
 	// lan transport implementation
 	//  + servers are advertized via net beacon
 	//  + lan lobby is filled via net listener
@@ -1245,39 +1253,115 @@ namespace net
 	
 	class TransportLAN : public Transport
 	{
+	public:
+		
 		TransportLAN()
 		{
-			// ...
+			mesh = NULL;
+			node = NULL;
+			beacon = NULL;
+			beaconAccumulator = 0.0f;
 		}
 		
 		~TransportLAN()
 		{
+			Stop();
+		}
+		
+		struct Config
+		{
+			unsigned short serverPort;
+			unsigned short clientPort;
+			unsigned short beaconPort;
+			unsigned short listenerPort;
+			unsigned int protocolId;
+			
+			Config()
+			{
+				serverPort = 30000;
+				clientPort = 30001;
+				beaconPort = 40000;
+				listenerPort = 40001;
+				protocolId = 0x1337d00d;
+			}
+		};
+		
+		void Configure( Config & config )
+		{
+			this->config = config;
+		}
+		
+		bool Listen( const char name[] )
+		{
+			assert( !beacon );
+			assert( !node );
+			assert( !mesh );
+			beacon = new Beacon( name, config.protocolId, config.serverPort, config.listenerPort );
+			if ( !beacon->Start( config.beaconPort ) )
+			{
+				Stop();
+				return false;
+			}
 			// ...
+			return true;
+		}
+		
+		bool Connect( const char name[], const Address & address = Address() )
+		{
+			assert( !beacon );
+			assert( !node );
+			assert( !mesh );
+			// ...
+			return true;
+		}
+		
+		void Stop()
+		{
+			if ( mesh )
+			{
+				delete mesh;
+				mesh = NULL;
+			}
+			if ( node )
+			{
+				delete node;
+				node = NULL;
+			}
+			if ( beacon )
+			{
+				delete beacon;
+				beacon = NULL;
+			}
 		}
 		
 		bool IsNodeConnected( int nodeId )
 		{
-			return false;
+			assert( node );
+			return node->IsNodeConnected( nodeId );
 		}
 		
 		int GetLocalNodeId() const
 		{
-			return 0;
+			assert( node );
+			return node->GetLocalNodeId();
 		}
 		
 		int GetMaxNodes() const
 		{
-			return 0;			
+			assert( node );
+			return node->GetMaxNodes();
 		}
 
 		bool SendPacket( int nodeId, const unsigned char data[], int size )
 		{
-			return false;
+			assert( node );
+			return node->SendPacket( nodeId, data, size );
 		}
 		
 		int ReceivePacket( int & nodeId, unsigned char data[], int size )
 		{
-			return 0;
+			assert( node );
+			return node->ReceivePacket( nodeId, data, size );
 		}
 
 		class ReliabilitySystem & GetReliability( int nodeId )
@@ -1288,8 +1372,33 @@ namespace net
 
 		void Update( float deltaTime )
 		{
-			// ...
+			if ( mesh )
+				mesh->Update( deltaTime );
+			if ( node )
+				node->Update( deltaTime );
+			if ( beacon )
+			{
+				beaconAccumulator += deltaTime;
+				while ( beaconAccumulator >= 1.0f )
+				{
+					beacon->Update( 1.0f );
+					beaconAccumulator -= 1.0f;
+				}
+			}
 		}
+		
+		TransportType GetType() const
+		{
+			return Transport_LAN;
+		}
+		
+	private:
+
+		Config config;
+		Mesh * mesh;
+		Node * node;
+		Beacon * beacon;
+		float beaconAccumulator;
 	};
 }
 

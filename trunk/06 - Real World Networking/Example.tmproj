@@ -2,27 +2,27 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>currentDocument</key>
-	<string>NetPlatform.h</string>
 	<key>documents</key>
 	<array>
 		<dict>
 			<key>filename</key>
 			<string>makefile</string>
 			<key>lastUsed</key>
-			<date>2008-10-25T06:16:01Z</date>
+			<date>2008-10-25T23:36:48Z</date>
 		</dict>
 		<dict>
 			<key>filename</key>
 			<string>NetLAN.h</string>
+			<key>lastUsed</key>
+			<date>2008-10-25T23:36:48Z</date>
+			<key>selected</key>
+			<true/>
 		</dict>
 		<dict>
 			<key>filename</key>
 			<string>NetPlatform.h</string>
 			<key>lastUsed</key>
-			<date>2008-10-25T06:16:28Z</date>
-			<key>selected</key>
-			<true/>
+			<date>2008-10-25T23:36:45Z</date>
 		</dict>
 		<dict>
 			<key>filename</key>
@@ -35,57 +35,38 @@
 		<dict>
 			<key>filename</key>
 			<string>NetTransport.h</string>
+			<key>lastUsed</key>
+			<date>2008-10-25T23:36:45Z</date>
+		</dict>
+		<dict>
+			<key>filename</key>
+			<string>NetTransport.cpp</string>
+			<key>lastUsed</key>
+			<date>2008-10-25T23:36:45Z</date>
 		</dict>
 		<dict>
 			<key>filename</key>
 			<string>Server.cpp</string>
-		</dict>
-		<dict>
-			<key>filename</key>
-			<string>Test.cpp</string>
+			<key>lastUsed</key>
+			<date>2008-10-25T23:36:44Z</date>
 		</dict>
 		<dict>
 			<key>filename</key>
 			<string>Client.cpp</string>
+			<key>lastUsed</key>
+			<date>2008-10-25T23:36:44Z</date>
+		</dict>
+		<dict>
+			<key>filename</key>
+			<string>Test.cpp</string>
+			<key>lastUsed</key>
+			<date>2008-10-25T23:36:46Z</date>
 		</dict>
 	</array>
 	<key>fileHierarchyDrawerWidth</key>
 	<integer>200</integer>
 	<key>metaData</key>
-	<dict>
-		<key>NetPlatform.h</key>
-		<dict>
-			<key>caret</key>
-			<dict>
-				<key>column</key>
-				<integer>49</integer>
-				<key>line</key>
-				<integer>147</integer>
-			</dict>
-			<key>firstVisibleColumn</key>
-			<integer>0</integer>
-			<key>firstVisibleLine</key>
-			<integer>126</integer>
-		</dict>
-		<key>makefile</key>
-		<dict>
-			<key>caret</key>
-			<dict>
-				<key>column</key>
-				<integer>0</integer>
-				<key>line</key>
-				<integer>0</integer>
-			</dict>
-			<key>firstVisibleColumn</key>
-			<integer>0</integer>
-			<key>firstVisibleLine</key>
-			<integer>0</integer>
-		</dict>
-	</dict>
-	<key>openDocuments</key>
-	<array>
-		<string>NetPlatform.h</string>
-	</array>
+	<dict/>
 	<key>showFileHierarchyDrawer</key>
 	<true/>
 	<key>windowFrame</key>
