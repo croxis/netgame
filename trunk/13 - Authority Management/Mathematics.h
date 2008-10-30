@@ -163,14 +163,14 @@ namespace math
 
 	/// snap floating point number to grid.
 
-	inline float snap(float p, float grid)
+	inline float snap( float p, float grid )
 	{
 		return grid ? float( floor((p + grid*0.5f)/grid) * grid) : p;
 	}
 
 	int random( int maximum )
 	{
-		ASSERT( maximum > 0 );
+		assert( maximum > 0 );
 		int randomNumber = 0;
 		randomNumber = rand() % maximum;
 		return randomNumber;
@@ -178,14 +178,14 @@ namespace math
 
 	float random_float( float min, float max )
 	{
-		ASSERT( max > min );
+		assert( max > min );
 		return random( 1000000 ) / 1000000.f * ( max - min ) + min;
 	}
 
 	bool chance( float probability )
 	{
-		ASSERT( probability >= 0.0f );
-		ASSERT( probability <= 1.0f );
+		assert( probability >= 0.0f );
+		assert( probability <= 1.0f );
 		const int percent = (int) ( probability * 100.0f );
 		return random(100) <= percent;
 	}

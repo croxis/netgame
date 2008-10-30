@@ -12,10 +12,42 @@
 #include "ode/ode.h"
 #include "Platform.h"
 #include "Display.h"
+#include "Mathematics.h"
 //#include "Transport.h"
 
 using namespace std;
 using namespace net;
+
+// ------------------------------------------------------------------------------
+
+// constants
+
+const int DisplayWidth = 800;
+const int DisplayHeight = 600;
+
+const float ShadowDistance = 10.0f;
+const float ColorChangeTightness = 0.1f;
+
+const float AuthorityTimeout = 1.0f;
+const float AuthorityLinearRestThreshold = 0.1f;
+const float AuthorityAngularRestThreshold = 0.1f;
+
+const int MaxCubes = 64;
+const int MaxPlayers = 2;
+const int PlayerBits = 1;
+const float CubeSize = 2.0f;
+const float CubeMass = 0.1f;
+const float PlayerStrafeForce = 30.0f;
+const float PlayerMaximumStrafeSpeed = 10.0f;
+const float PlayerMass = 1.0f;
+const float Boundary = 10.0f;
+const float Gravity = 20.0f;
+const float Friction = 30.0f;
+const int MaxIterations = 20;
+const float ERP = 0.2f;
+const float CFM = 0.05f;
+const float MaximumCorrectingVelocity = 100.0f;
+const float ContactSurfaceLayer = 0.001f;
 
 // ------------------------------------------------------------------------------
 
@@ -55,7 +87,7 @@ struct SimulationCubeState
 		position = math::Vector(0,0,0);
 		linearVelocity = math::Vector(0,0,0);
 		angularVelocity = math::Vector(0,0,0);
-		orientation = math::Vector(1,0,0,0);
+		orientation = math::Quaternion(1,0,0,0);
 	}
 	
 	bool enabled;
@@ -107,7 +139,6 @@ struct SimulationState
 	bool attachmentLastFrame;
 };
 
-/*
 // physics simulation (ODE)
 
 class PhysicsSimulation
@@ -141,96 +172,37 @@ public:
 		
 		// add some cubes to the world
 
-		#if DEMO == DEMO_STACKS
+		srand( 280090412 );
 
-			// stacks
+		AddCube( math::Vector(-5,10,0), 1 );
+		AddCube( math::Vector(+5,10,0), 1 );
 
-			AddCube( PblVector3(-3,2,0), 1 );
-			AddCube( PblVector3(+3,2,0), 1 );
+		AddCube( math::Vector(0,1,0), 0.9f );
+		AddCube( math::Vector(0,4,0), 0.9f );
+		AddCube( math::Vector(0,8,0), 0.9f );
 
-			AddCube( PblVector3(-3,1,0), 1 );
-			AddCube( PblVector3(-3,10,0), 1 );
+		for ( int i = 0; i < 30; ++i )
+		{
+			float x = math::random_float( -Boundary, +Boundary );
+			float y = math::random_float( 1.0f, 4.0f );
+			float z = math::random_float( -Boundary, +Boundary );
+			float scale = math::random_float( 0.1f, 0.6f );
 
-			AddCube( PblVector3(+3,1,0), 1 );
-			AddCube( PblVector3(+3,10,0), 1 );
+			AddCube( math::Vector(x,y,z), scale );
+		}
 		
-		#endif
+		srand( 100 );
 
-		#if DEMO == DEMO_DYNAMIC_WORLD || DEMO == DEMO_AUTHORITY_MANAGEMENT
-		
-			// random
-		
-			srand( 280090412 );
+		for ( int i = 0; i < 29; ++i )
+		{
+			float x = math::random_float( -Boundary, +Boundary );
+			float y = math::random_float( 2.0f, 4.0f );
+			float z = math::random_float( -Boundary, +Boundary );
+			float scale = math::random_float( 0.1f, 0.2f );
 
-			AddCube( PblVector3(-5,10,0), 1 );
-			AddCube( PblVector3(+5,10,0), 1 );
-
-			AddCube( PblVector3(0,1,0), 0.9f );
-			AddCube( PblVector3(0,4,0), 0.9f );
-			AddCube( PblVector3(0,8,0), 0.9f );
-
-			for ( int i = 0; i < 30; ++i )
-			{
-				float x = random_float( -Boundary, +Boundary );
-				float y = random_float( 1.0f, 4.0f );
-				float z = random_float( -Boundary, +Boundary );
-				float scale = random_float( 0.1f, 0.6f );
-
-				AddCube( PblVector3(x,y,z), scale );
-			}
+			AddCube( math::Vector(x,y,z), scale );
+		}
 			
-			srand( 100 );
-
-			for ( int i = 0; i < 29; ++i )
-			{
-				float x = random_float( -Boundary, +Boundary );
-				float y = random_float( 2.0f, 4.0f );
-				float z = random_float( -Boundary, +Boundary );
-				float scale = random_float( 0.1f, 0.2f );
-
-				AddCube( PblVector3(x,y,z), scale );
-			}
-			
-		#endif
-
-		#if DEMO == DEMO_KATAMARI
-		
-			// katamari!
-		
-			srand( 280090412 );
-
-			AddCube( PblVector3(+5,10,0), 0.4f );
-			AddCube( PblVector3(-5,10,0), 0.4f );
-
-			for ( int i = 0; i < MaxCubes - 2; ++i )
-			{
-				float x = random_float( -Boundary, +Boundary );
-				float y = random_float( 1.0f, 4.0f );
-				float z = random_float( -Boundary, +Boundary );
-				float scale = random_float( 0.15f, 0.15f );
-
-				AddCube( PblVector3(x,y,z), scale );
-			}			
-			
-		#endif
-		
-		#if DEMO == DEMO_REWIND_AND_REPLAY
-		
-			// rewind and replay
-			
-			// ...
-			
-		#endif
-		
-		#if DEMO == DEMO_INTERPOLATION
-		
-			// interpolation
-			
-			AddCube( PblVector3(-3,2,0), 1 );
-			AddCube( PblVector3(+3,2,0), 1 );
-		
-		#endif
-		
 		// players have not joined yet
 		
 		for ( int i = 0; i < MaxPlayers; ++i )
@@ -267,28 +239,28 @@ public:
 				
 				if ( player.input.left || player.input.right || player.input.forward || player.input.back )
 				{
-					ASSERT( player.cubeId >= 0 );
-					ASSERT( player.cubeId < MaxCubes );
+					assert( player.cubeId >= 0 );
+					assert( player.cubeId < MaxCubes );
 				
 					dBodyID body = cubes[player.cubeId].body;
 
 					const dReal * linearVelocity = dBodyGetLinearVel( body );
 
-					PblVector3 velocity = PblVector3( linearVelocity[0], linearVelocity[1], linearVelocity[2] );
+					math::Vector velocity( linearVelocity[0], linearVelocity[1], linearVelocity[2] );
 					
 					float fx = 0.0f;
 					float fz = 0.0f;
 					
-					if ( velocity.GetX() < PlayerMaximumStrafeSpeed )
+					if ( velocity.x < PlayerMaximumStrafeSpeed )
 						fx += PlayerStrafeForce * player.input.right;
 					
-					if ( velocity.GetX() > -PlayerMaximumStrafeSpeed )
+					if ( velocity.x > -PlayerMaximumStrafeSpeed )
 						fx -= PlayerStrafeForce * player.input.left;
 					
-					if ( velocity.GetZ() < PlayerMaximumStrafeSpeed )
+					if ( velocity.z < PlayerMaximumStrafeSpeed )
 						fz += PlayerStrafeForce * player.input.forward;
 					
-					if ( velocity.GetZ() > -PlayerMaximumStrafeSpeed )
+					if ( velocity.z > -PlayerMaximumStrafeSpeed )
 						fz -= PlayerStrafeForce * player.input.back;
 				
 					dBodyAddForce( body, fx, 0.0f, fz );
@@ -355,18 +327,8 @@ public:
 		dWorldStep( world, deltaTime );
 		#endif
 	}
-	
-	void GetSoundState( SoundState & soundState )
-	{
-		for ( int i = 0; i < MaxPlayers; ++i )
-		{
-			if ( playerData[i].exists )
-				soundState.playerAttach[i] = playerData[i].attachLastFrame;
-			else
-				soundState.playerAttach[i] = false;
-		}
-	}
-	
+		
+	/*
 	void GetRenderState( RenderState & renderState )
 	{
 		renderState.localPlayerId = -1;		// note: this is filled in by the network game
@@ -378,26 +340,26 @@ public:
 			if ( playerData[i].exists )
 			{
 				const dReal * position = dBodyGetPosition( cubes[playerData[i].cubeId].body );
-				renderState.player[i].position = PblVector3( position[0], position[1], position[2] );
+				renderState.player[i].position = math::Vector( position[0], position[1], position[2] );
 			}
 		}
 		
-		ASSERT( numCubes <= MaxCubes );
+		assert( numCubes <= MaxCubes );
 		
 		renderState.numCubes = numCubes;
 
 		for ( int i = 0; i < numCubes; ++i )
 		{
-			ASSERT( cubes[i].body );
+			assert( cubes[i].body );
 			
 			const dReal * position = dBodyGetPosition( cubes[i].body );
 			const dReal * orientation = dBodyGetQuaternion( cubes[i].body );
 		
-			renderState.cubes[i].position = PblVector3( position[0], position[1], position[2] );
-			renderState.cubes[i].orientation = PblQuaternion( orientation[0], orientation[1], orientation[2], orientation[3] );
+			renderState.cubes[i].position = math::Vector( position[0], position[1], position[2] );
+			renderState.cubes[i].orientation = math::Quaternion( orientation[0], orientation[1], orientation[2], orientation[3] );
 			renderState.cubes[i].scale = cubes[i].scale * CubeSize * 0.5f;
 
-			ASSERT( MaxPlayers == 2 );
+			assert( MaxPlayers == 2 );
 
 			bool interacting[2] = { false, false };
 			
@@ -427,6 +389,7 @@ public:
 			}
 		}
 	}
+	*/
 		
 	void GetSimulationState( SimulationState & simulationState )
 	{
@@ -448,7 +411,7 @@ public:
 		
 		for ( int i = 0; i < numCubes; ++i )
 		{
-			ASSERT( cubes[i].body );
+			assert( cubes[i].body );
 
 			const dReal * position = dBodyGetPosition( cubes[i].body );
 			const dReal * orientation = dBodyGetQuaternion( cubes[i].body );
@@ -456,10 +419,10 @@ public:
 			const dReal * angularVelocity = dBodyGetAngularVel( cubes[i].body );
 
 			simulationState.cubeState[i].enabled = dBodyIsEnabled( cubes[i].body ) != 0;
-			simulationState.cubeState[i].position = PblVector3( position[0], position[1], position[2] );
-			simulationState.cubeState[i].orientation = PblQuaternion( orientation[0], orientation[1], orientation[2], orientation[3] );
-			simulationState.cubeState[i].linearVelocity = PblVector3( linearVelocity[0], linearVelocity[1], linearVelocity[2] );
-			simulationState.cubeState[i].angularVelocity = PblVector3( angularVelocity[0], angularVelocity[1], angularVelocity[2] );
+			simulationState.cubeState[i].position = math::Vector( position[0], position[1], position[2] );
+			simulationState.cubeState[i].orientation = math::Quaternion( orientation[0], orientation[1], orientation[2], orientation[3] );
+			simulationState.cubeState[i].linearVelocity = math::Vector( linearVelocity[0], linearVelocity[1], linearVelocity[2] );
+			simulationState.cubeState[i].angularVelocity = math::Vector( angularVelocity[0], angularVelocity[1], angularVelocity[2] );
 		}
 
 		memcpy( &simulationState.cubeContacts, &cubeContacts, sizeof( SimulationCubeContacts ) * MaxCubes );
@@ -474,22 +437,22 @@ public:
 				playerData[i].input = simulationState.playerInput[i];
 		}
 		
-		ASSERT( simulationState.numCubes == numCubes );
+		assert( simulationState.numCubes == numCubes );
 
 		for ( int i = 0; i < numCubes; ++i )
 		{
 			const SimulationCubeState & cubeState = simulationState.cubeState[i];
 
 			dQuaternion quaternion;
-			quaternion[0] = cubeState.orientation.GetS();
-			quaternion[1] = cubeState.orientation.GetX();
-			quaternion[2] = cubeState.orientation.GetY();
-			quaternion[3] = cubeState.orientation.GetZ();
+			quaternion[0] = cubeState.orientation.w;
+			quaternion[1] = cubeState.orientation.x;
+			quaternion[2] = cubeState.orientation.y;
+			quaternion[3] = cubeState.orientation.z;
 
-			dBodySetPosition( cubes[i].body, cubeState.position.GetX(), cubeState.position.GetY(), cubeState.position.GetZ() );
+			dBodySetPosition( cubes[i].body, cubeState.position.x, cubeState.position.y, cubeState.position.z );
 			dBodySetQuaternion( cubes[i].body, quaternion );
-			dBodySetLinearVel( cubes[i].body, cubeState.linearVelocity.GetX(), cubeState.linearVelocity.GetY(), cubeState.linearVelocity.GetZ() );
-			dBodySetAngularVel( cubes[i].body, cubeState.angularVelocity.GetX(), cubeState.angularVelocity.GetY(), cubeState.angularVelocity.GetZ() );
+			dBodySetLinearVel( cubes[i].body, cubeState.linearVelocity.x, cubeState.linearVelocity.y, cubeState.linearVelocity.z );
+			dBodySetAngularVel( cubes[i].body, cubeState.angularVelocity.x, cubeState.angularVelocity.y, cubeState.angularVelocity.z );
 
 			dBodySetForce( cubes[i].body, 0, 0, 0 );
 			dBodySetTorque( cubes[i].body, 0, 0, 0 );
@@ -503,10 +466,10 @@ public:
 
 	void OnPlayerJoin( int playerId )
 	{
-		ASSERT( playerId >= 0 );
-		ASSERT( playerId < MaxPlayers );
+		assert( playerId >= 0 );
+		assert( playerId < MaxPlayers );
 
-		ASSERT( playerData[playerId].exists == false );
+		assert( playerData[playerId].exists == false );
 		
 		printf( "simulation: player %d joined\n", playerId );
 
@@ -517,10 +480,10 @@ public:
 	
 	void OnPlayerLeft( int playerId )
 	{
-		ASSERT( playerId >= 0 );
-		ASSERT( playerId < MaxPlayers );
+		assert( playerId >= 0 );
+		assert( playerId < MaxPlayers );
 		
-		ASSERT( playerData[playerId].exists == true );
+		assert( playerData[playerId].exists == true );
 		
 		printf( "simulation: player %d left\n", playerId );
 		
@@ -532,23 +495,23 @@ public:
 	
 protected:
 
-	void AddCube( const PblVector3 & position, float scale )
+	void AddCube( const math::Vector & position, float scale )
 	{
-		ASSERT( numCubes >= 0 );
-		ASSERT( numCubes < MaxCubes );
+		assert( numCubes >= 0 );
+		assert( numCubes < MaxCubes );
 		
 		// setup cube body
 		
 		cubes[numCubes].body = dBodyCreate( world );
 		
-		ASSERT( cubes[numCubes].body );
+		assert( cubes[numCubes].body );
 
 		dMass mass;
 		dMassSetBox( &mass, 1, 1, 1, 1 );
 		dMassAdjust( &mass, CubeMass * scale );
 		dBodySetMass( cubes[numCubes].body, &mass );
 
-		dBodySetPosition( cubes[numCubes].body, position.GetX(), position.GetY(), position.GetZ() );
+		dBodySetPosition( cubes[numCubes].body, position.x, position.y, position.z );
 
 		dBodySetData( cubes[numCubes].body, &cubes[numCubes] );
 
@@ -563,10 +526,10 @@ protected:
 	
 	void PlayerPossessCube( int playerId, int cubeId )
 	{
-		ASSERT( playerId >= 0 );
-		ASSERT( playerId < MaxPlayers );
-		ASSERT( cubeId >= 0 );
-		ASSERT( cubeId < MaxCubes );
+		assert( playerId >= 0 );
+		assert( playerId < MaxPlayers );
+		assert( cubeId >= 0 );
+		assert( cubeId < MaxCubes );
 		
 		playerData[playerId].cubeId = cubeId;
 		cubes[cubeId].ownerPlayerId = playerId;
@@ -574,7 +537,7 @@ protected:
 		if ( cubes[cubeId].parentCubeId != -1 )
 			DetachCube( cubeId );
 
-		ASSERT( cubes[cubeId].body );
+		assert( cubes[cubeId].body );
 			
 		dMass mass;
 		dMassSetBox( &mass, 1, 1, 1, 1 );
@@ -584,10 +547,10 @@ protected:
 	
 	void PlayerUnpossessCube( int playerId, int cubeId )
 	{
-		ASSERT( playerId >= 0 );
-		ASSERT( playerId < MaxPlayers );
-		ASSERT( cubeId >= 0 );
-		ASSERT( cubeId < MaxCubes );
+		assert( playerId >= 0 );
+		assert( playerId < MaxPlayers );
+		assert( cubeId >= 0 );
+		assert( cubeId < MaxCubes );
 		
 		cubes[cubeId].ownerPlayerId = -1;
 		playerData[playerId].cubeId = -1;
@@ -613,8 +576,8 @@ protected:
 	
  	void RecurseInteractions( SimulationPlayerInteractions & playerInteractions, int cubeId )
 	{
-		ASSERT( cubeId >= 0 );
-		ASSERT( cubeId < MaxCubes );
+		assert( cubeId >= 0 );
+		assert( cubeId < MaxCubes );
 		
 		for ( int i = 0; i < numCubes; ++i )
 		{
@@ -628,17 +591,17 @@ protected:
 	
 	void AttachCube( int childCubeId, int parentCubeId )
 	{
-		ASSERT( childCubeId >= 0 );
-		ASSERT( childCubeId < numCubes );
+		assert( childCubeId >= 0 );
+		assert( childCubeId < numCubes );
 
-		ASSERT( parentCubeId >= 0 );
-		ASSERT( parentCubeId < numCubes );
+		assert( parentCubeId >= 0 );
+		assert( parentCubeId < numCubes );
 
-		ASSERT( childCubeId != parentCubeId );
+		assert( childCubeId != parentCubeId );
 
-		ASSERT( cubes[childCubeId].parentCubeId == -1 );
+		assert( cubes[childCubeId].parentCubeId == -1 );
 		
-		ASSERT( cubes[childCubeId].body );
+		assert( cubes[childCubeId].body );
 
 		// attach via fixed joint
 		
@@ -653,12 +616,12 @@ protected:
 	
 	void DetachCube( int childCubeId )
 	{
-		ASSERT( childCubeId >= 0 );
-		ASSERT( childCubeId < numCubes );
+		assert( childCubeId >= 0 );
+		assert( childCubeId < numCubes );
 		
-		ASSERT( cubes[childCubeId].parentCubeId != -1 );
+		assert( cubes[childCubeId].parentCubeId != -1 );
 		
-		ASSERT( cubes[childCubeId].fixedJoint );
+		assert( cubes[childCubeId].fixedJoint );
 	
 		dJointDestroy( cubes[childCubeId].fixedJoint );
 		cubes[childCubeId].fixedJoint = 0;
@@ -667,8 +630,8 @@ protected:
 	
 	void DetachAllCubesFromParent( int parentCubeId )
 	{
-		ASSERT( parentCubeId >= 0 );
-		ASSERT( parentCubeId < numCubes );
+		assert( parentCubeId >= 0 );
+		assert( parentCubeId < numCubes );
 		
 		for ( int i = 0; i < numCubes; ++i )
 		{
@@ -731,7 +694,7 @@ protected:
 	{
 		PhysicsSimulation * simulation = (PhysicsSimulation*) data;
 	
-		ASSERT( simulation );
+		assert( simulation );
 	
 	    dBodyID b1 = dGeomGetBody( o1 );
 	    dBodyID b2 = dGeomGetBody( o2 );
@@ -758,8 +721,8 @@ protected:
 				const CubeData * cube1 = (const CubeData*) dBodyGetData( b1 );
 				const CubeData * cube2 = (const CubeData*) dBodyGetData( b2 );
 			
-				ASSERT( cube1 );
-				ASSERT( cube2 );
+				assert( cube1 );
+				assert( cube2 );
 			
 				if ( cube1->parentCubeId == -1 && cube2->parentCubeId == -1 )
 				{
@@ -769,10 +732,10 @@ protected:
 					if ( ! ( cube1->ownerPlayerId != -1 && cube1->ownerPlayerId == cube2->parentCubeId ||
 						     cube2->ownerPlayerId != -1 && cube2->ownerPlayerId == cube1->parentCubeId ) )
 					{
-						ASSERT( cubeId1 >= 0 );
-						ASSERT( cubeId2 >= 0 );
-						ASSERT( cubeId1 < MaxCubes );
-						ASSERT( cubeId2 < MaxCubes );
+						assert( cubeId1 >= 0 );
+						assert( cubeId2 >= 0 );
+						assert( cubeId1 < MaxCubes );
+						assert( cubeId2 < MaxCubes );
 	
 						simulation->cubeContacts[cubeId1].touching[cubeId2] = true;
 						simulation->cubeContacts[cubeId2].touching[cubeId1] = true;
@@ -782,7 +745,6 @@ protected:
 	    }
 	}
 };
-*/
 
 // ------------------------------------------------------------------------------
 

@@ -4,7 +4,7 @@ flags = -Wall -Iode -DDEBUG # -O3
 libs = -Lode -lode -lruby
 frameworks = -framework Carbon -framework OpenGL -framework AGL
 
-% : %.cpp Net.h
+% : %.cpp Display.h Platform.h Mathematics.h
 	g++ $< -o $@ ${flags} ${libs} ${frameworks}
 
 all : Authority
