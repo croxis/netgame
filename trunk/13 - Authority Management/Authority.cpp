@@ -135,8 +135,6 @@ struct SimulationState
 	SimulationCubeState cubeState[MaxCubes];
 	SimulationCubeContacts cubeContacts[MaxCubes];
 	SimulationPlayerInteractions playerInteractions[MaxPlayers];
-	
-	bool attachmentLastFrame;
 };
 
 // physics simulation (ODE)
@@ -222,11 +220,6 @@ public:
 	
 	void Update( float deltaTime )
 	{			
-		// clear player data
-		
-		for ( int i = 0; i < MaxPlayers; ++i )
-			playerData[i].attachLastFrame = false;
-		
 		// process player input
 		
 		for ( int i = 0; i < MaxPlayers; ++i )
@@ -280,44 +273,6 @@ public:
 		dSpaceCollide( space, this, NearCallback );
 
 		DeterminePlayerInteractions();
-
-		#if DEMO == DEMO_KATAMARI
-		
-			// katamari!
-			
-			for ( int i = 0; i < MaxPlayers; ++i )
-			{
-				int playerCubeId = playerData[i].cubeId;
-				
-				for ( int j = 0; j < numCubes; ++j )
-				{
-					bool ignore = false;
-					
-					// dont pick up player cubes!
-					for ( int k = 0; k < MaxPlayers; ++k )
-					{
-						if ( j == playerData[k].cubeId )
-						{
-							ignore = true;
-						}
-					}
-							
-					// dont pick up cubes already attached!
-					if ( cubes[j].parentCubeId != -1 )
-						ignore = true;
-						
-					if ( ignore )
-						continue;
-						
-					if ( playerInteractions[playerCubeId].interacting[j] )
-					{
-						AttachCube( j, playerCubeId );
-						playerData[i].attachLastFrame = true;
-					}
-				}
-			}
-			
-		#endif
 	
 		// step world forward
 
@@ -515,7 +470,7 @@ protected:
 
 		dBodySetData( cubes[numCubes].body, &cubes[numCubes] );
 
-		// setup cube geom and attach to body
+		// setup cube geom and set body
 
 		cubes[numCubes].scale = scale;
 		cubes[numCubes].geom = dCreateBox( space, scale * CubeSize, scale * CubeSize, scale * CubeSize );
@@ -534,9 +489,6 @@ protected:
 		playerData[playerId].cubeId = cubeId;
 		cubes[cubeId].ownerPlayerId = playerId;
 		
-		if ( cubes[cubeId].parentCubeId != -1 )
-			DetachCube( cubeId );
-
 		assert( cubes[cubeId].body );
 			
 		dMass mass;
@@ -587,58 +539,7 @@ protected:
 				RecurseInteractions( playerInteractions, i );
 			}
 		}		
-	}
-	
-	void AttachCube( int childCubeId, int parentCubeId )
-	{
-		assert( childCubeId >= 0 );
-		assert( childCubeId < numCubes );
-
-		assert( parentCubeId >= 0 );
-		assert( parentCubeId < numCubes );
-
-		assert( childCubeId != parentCubeId );
-
-		assert( cubes[childCubeId].parentCubeId == -1 );
-		
-		assert( cubes[childCubeId].body );
-
-		// attach via fixed joint
-		
-		cubes[childCubeId].fixedJoint = dJointCreateFixed( world, 0 );
-		dJointAttach( cubes[childCubeId].fixedJoint, cubes[childCubeId].body, cubes[parentCubeId].body );
-		dJointSetFixed( cubes[childCubeId].fixedJoint );
-		
-		// set parent cube id
-		
-		cubes[childCubeId].parentCubeId = parentCubeId;
-	}
-	
-	void DetachCube( int childCubeId )
-	{
-		assert( childCubeId >= 0 );
-		assert( childCubeId < numCubes );
-		
-		assert( cubes[childCubeId].parentCubeId != -1 );
-		
-		assert( cubes[childCubeId].fixedJoint );
-	
-		dJointDestroy( cubes[childCubeId].fixedJoint );
-		cubes[childCubeId].fixedJoint = 0;
-		cubes[childCubeId].parentCubeId = -1;
-	}
-	
-	void DetachAllCubesFromParent( int parentCubeId )
-	{
-		assert( parentCubeId >= 0 );
-		assert( parentCubeId < numCubes );
-		
-		for ( int i = 0; i < numCubes; ++i )
-		{
-			if ( cubes[i].parentCubeId == parentCubeId )
-				DetachCube( i );
-		}
-	}
+	}	
 
 private:
 	
@@ -651,13 +552,11 @@ private:
 		bool exists;
 		int cubeId;
 		SimulationPlayerInput input;
-		bool attachLastFrame;
 		
 		PlayerData()
 		{
 			exists = false;
 			cubeId = 0;
-			attachLastFrame = false;
 		}
 	};
 
