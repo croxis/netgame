@@ -51,6 +51,44 @@ const float ContactSurfaceLayer = 0.001f;
 
 // ------------------------------------------------------------------------------
 
+// abstracted render state (decouple sim and render)
+
+struct RenderState
+{
+	RenderState()
+	{
+		localPlayerId = -1;
+		numCubes = 0;
+	}
+	
+	struct Player
+	{
+		bool exists;
+		math::Vector position;
+		
+		Player()
+		{
+			exists = false;
+			position = math::Vector(0,0,0);			// todo: is this neccessary?
+		}
+	};
+	
+	struct Cube
+	{		
+ 		math::Vector position;
+ 		math::Quaternion orientation;
+		float scale;
+		float r,g,b;
+	};
+
+	int localPlayerId;
+	Player player[MaxPlayers];
+	int numCubes;
+	Cube cubes[MaxCubes];
+};
+
+// ------------------------------------------------------------------------------
+
 // abstracted simulation data (decouple sim and networking)
 
 struct SimulationPlayerInput
@@ -283,7 +321,6 @@ public:
 		#endif
 	}
 		
-	/*
 	void GetRenderState( RenderState & renderState )
 	{
 		renderState.localPlayerId = -1;		// note: this is filled in by the network game
@@ -344,7 +381,6 @@ public:
 			}
 		}
 	}
-	*/
 		
 	void GetSimulationState( SimulationState & simulationState )
 	{
