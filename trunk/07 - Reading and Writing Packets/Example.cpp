@@ -196,6 +196,139 @@ struct ExampleF
 	}
 };
 
+struct ExampleG
+{
+	struct X
+	{
+		float one,two,three;
+		bool Serialize( Stream & stream, GameMode mode )
+		{
+			stream.SerializeFloat( one );
+			stream.SerializeFloat( two );
+			stream.SerializeFloat( three );
+			return true;
+		}
+	};
+
+	struct Y
+	{
+		int left;
+		int right;
+		bool Serialize( Stream & stream, GameMode mode )
+		{
+			stream.SerializeInteger( left );
+			stream.SerializeInteger( right );
+			return true;
+		}
+	};
+
+	struct Z
+	{
+		bool testing;
+		bool Serialize( Stream & stream, GameMode mode )
+		{
+			stream.SerializeBoolean( testing );
+			return true;
+		}
+	};
+
+	enum DataType
+	{
+		DataTypeX,
+		DataTypeY,
+		DataTypeZ,
+		DataTypeMax
+	};
+
+	DataType dataType;
+
+	union
+	{
+		X x;
+		Y y;
+		Z z;
+	};
+
+	ExampleG()
+	{
+		dataType = DataTypeX;
+		x.one = 1.0f;
+		x.two = 2.0f;
+		x.three = 3.0f;
+	}
+
+	void SetX( float one, float two, float three )
+	{
+		dataType = DataTypeX;
+		x.one = 1.0f;
+		x.two = 2.0f;
+		x.three = 3.0f;
+	}
+
+	void SetY( int left, int right )
+	{
+		dataType = DataTypeY;
+		y.left = left;
+		y.right = right;
+	}
+
+	void SetZ( bool testing )
+	{
+		dataType = DataTypeZ;
+		z.testing = testing;
+	}
+
+	#define SERIALIZE_ENUM( stream, EnumValue, EnumType, EnumMax )							\
+	{																						\
+		unsigned int value = (unsigned int) EnumValue;										\
+		if ( !stream.SerializeInteger( value, 0, EnumMax - 1 ) )							\
+			return false;																	\
+		EnumValue = (EnumType) value;														\
+	}
+
+	bool Serialize( Stream & stream, GameMode mode )
+	{
+		SERIALIZE_ENUM( stream, dataType, DataType, DataTypeMax );
+		
+		switch ( dataType )
+		{
+			case DataTypeX: return x.Serialize( stream, mode );
+			case DataTypeY: return y.Serialize( stream, mode );
+			case DataTypeZ: return z.Serialize( stream, mode );
+			default: return false;
+		}
+		
+		return true;
+	}
+};
+
+class ExampleH
+{
+	unsigned int a : 3;
+	unsigned int b : 2;
+	unsigned int c : 1;
+	unsigned int d : 10;
+	unsigned int e : 5;
+	
+	#define SERIALIZE_BITFIELD( stream, bitfield, bits )			\
+	{																\
+		unsigned int value = (unsigned int) bitfield;				\
+		if ( !stream.SerializeBits( value, bits ) )					\
+			return false;											\
+		bitfield = value;											\
+	}
+
+	bool Serialize( Stream & stream, GameMode mode )
+	{
+		SERIALIZE_BITFIELD( stream, a, 3 );
+		SERIALIZE_BITFIELD( stream, b, 2 );
+		SERIALIZE_BITFIELD( stream, c, 1 );
+		SERIALIZE_BITFIELD( stream, d, 10 );
+		SERIALIZE_BITFIELD( stream, e, 5 );
+		return true;
+	}
+};
+
 struct GameData
 {
 	GameData( GameMode mode )
@@ -220,6 +353,7 @@ struct GameData
 			f.count = 15;
 			for ( unsigned int i = 0; i < f.count; ++i )
 				f.objects[i] = Object( i, 1 + rand() % 32 );
+			g.SetY( -1, +1 );
 		}
 		
 		if ( mode == Client )
@@ -239,6 +373,7 @@ struct GameData
 			d.serverToClientData = 0x22222;
 			strcpy( (char*) e.stringOne, "hello from client! (1)" );
 			strcpy( (char*) e.stringTwo, "hello from client! (2)" );
+			g.SetZ( true );
 		}
 	}
 	
@@ -250,6 +385,7 @@ struct GameData
 	ExampleD d;
 	ExampleE e;
 	ExampleF f;
+	ExampleG g;
 	
 	bool Serialize( Stream & stream )
 	{
@@ -273,6 +409,9 @@ struct GameData
 			return false;
 
 		if ( !f.Serialize( stream, mode ) )
+			return false;
+
+		if ( !g.Serialize( stream, mode ) )
 			return false;
 
 		stream.Checkpoint();
@@ -325,6 +464,8 @@ int main( int argc, char * argv[] )
 	printf( " -> %d data bytes, %d journal bytes\n", client_buffer_bytes_read, client_journal_bytes_read );
 	
 	printf( "--------------------------------------------\n" );
+
+	// todo: send it back the other way ...
 
 	return 0;
 }

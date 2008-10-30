@@ -214,6 +214,15 @@ namespace net
 			value = (bool) tmp;
 			return result;
 		}
+
+		bool SerializeByte( char & value, char min = -127, char max = +128 )
+		{
+			// wtf: why do I have to do this!?
+			unsigned int tmp = (unsigned int) ( value + 127 );
+			bool result = SerializeInteger( tmp, (unsigned int ) ( min + 127 ), ( max + 127 ) );
+			value = ( (char) tmp ) - 127;
+			return result;
+		}
 		
 		bool SerializeByte( signed char & value, signed char min = -127, signed char max = +128 )
 		{
