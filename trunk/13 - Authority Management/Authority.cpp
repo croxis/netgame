@@ -49,6 +49,8 @@ const float CFM = 0.05f;
 const float MaximumCorrectingVelocity = 100.0f;
 const float ContactSurfaceLayer = 0.001f;
 
+#define MULTITHREADED
+
 // ------------------------------------------------------------------------------
 
 // abstracted render state (decouple sim and render)
@@ -679,6 +681,253 @@ protected:
 			}
 	    }
 	}
+};
+
+// ------------------------------------------------------------------------------
+
+// worker thread 
+
+#ifdef MULTITHREADED
+#include <pthread.h>
+#endif
+
+class WorkerThread
+{
+public:
+	
+	WorkerThread()
+	{
+		#ifdef MULTITHREADED
+		thread = 0;
+		#endif
+	}
+	
+	virtual ~WorkerThread()
+	{
+		#ifdef MULTITHREADED
+		thread = 0;
+		#endif
+	}
+	
+	bool Start()
+	{
+		#ifdef MULTITHREADED
+	
+			if ( pthread_create( &thread, NULL, StaticRun, (void*)this ) != 0 )
+			{
+				printf( "error: pthread_create failed\n" );
+				return false;
+			}
+		
+		#else
+		
+			Run();
+			
+		#endif
+		
+		return true;
+	}
+	
+	bool Join()
+	{
+		#ifdef MULTITHREADED
+		if ( pthread_join( thread, NULL ) != 0 )
+		{
+			printf( "error: pthread_join failed\n" );
+			return false;
+		}
+		#endif
+		return true;
+	}
+	
+protected:
+	
+	static void * StaticRun( void * data )
+	{
+		WorkerThread * self = (WorkerThread*) data;
+		self->Run();
+		return NULL;
+	}
+	
+	virtual void Run() = 0;			// note: override this to implement your thread task
+	
+private:
+
+	#ifdef MULTITHREADED	
+	pthread_t thread;
+	#endif
+};
+
+// ------------------------------------------------------------------------------
+
+// authority management
+
+struct AuthorityData
+{
+	int authority;							// authority id. -1 = default authority, 0 is server player, 1 is client player
+	float timeAtRest;						// time at rest. we revert to default authority if at rest longer than authority timeout
+	
+	AuthorityData()
+	{
+		authority = -1;
+		timeAtRest = 0;
+	}
+};
+
+struct AuthorityState
+{
+	int numCubes;
+	AuthorityData cubeAuthority[MaxCubes];
+};
+
+class AuthorityManagement
+{
+public:
+	
+	AuthorityManagement()
+	{
+		this->localAuthorityId = 0;
+		this->authorityByDefault = true;
+	}
+	
+	void SetSimulationState( const SimulationState & simulationState )
+	{
+		this->simulationState = simulationState;
+	}
+	
+	void Update( int localAuthorityId, bool authorityByDefault )
+	{
+		if ( localAuthorityId == -1 )
+			return;
+		
+		assert( localAuthorityId >= 0 );
+		assert( localAuthorityId < MaxPlayers );
+
+		this->localAuthorityId = localAuthorityId;
+		this->authorityByDefault = authorityByDefault;
+
+		// detect local authority changes for non-player controlled cubes
+
+		authorityState.numCubes = simulationState.numCubes;
+
+		for ( int i = 0; i < simulationState.numCubes; ++i )
+		{
+			for ( int j = 0; j < MaxPlayers; ++j )
+			{
+				if ( simulationState.playerInteractions[j].interacting[i] && 
+					 ( j == 0 || authorityState.cubeAuthority[i].authority == -1 ) )
+				{
+					authorityState.cubeAuthority[i].authority = j;
+					break;
+				}
+			}
+		}
+
+		// revert to no authority after timeout at rest
+		
+		for ( int i = 0; i < authorityState.numCubes; ++i )
+		{
+			const float linearSpeed = simulationState.cubeState[i].linearVelocity.length();
+			const float angularSpeed = simulationState.cubeState[i].angularVelocity.length();
+			
+			const bool resting = linearSpeed < AuthorityLinearRestThreshold && angularSpeed < AuthorityAngularRestThreshold;
+			
+			if ( resting )
+				authorityState.cubeAuthority[i].timeAtRest += 1.0f;
+			else
+				authorityState.cubeAuthority[i].timeAtRest = 0.0f;
+
+			if ( authorityState.cubeAuthority[i].timeAtRest > AuthorityTimeout )
+			{
+				authorityState.cubeAuthority[i].authority = -1;
+				authorityState.cubeAuthority[i].timeAtRest = 0.0f;
+			}
+		}
+		
+		// force authority for player controlled cubes
+		
+		for ( int i = 0; i < MaxPlayers; ++i )
+		{
+			if ( simulationState.playerExists[i] )
+			{
+				int playerCubeId = simulationState.playerState[i].cubeId;
+				
+				assert( playerCubeId >= 0 );
+				assert( playerCubeId < MaxCubes );
+				
+				authorityState.cubeAuthority[playerCubeId].authority = i;
+				authorityState.cubeAuthority[playerCubeId].timeAtRest = 0.0f;
+			}
+		}
+	}
+	
+	void PushPlayerInput( int playerId, const SimulationPlayerInput & playerInput )
+	{
+		assert( playerId >= 0 );
+		assert( playerId < MaxPlayers );
+
+		simulationState.playerInput[playerId] = playerInput;
+	}
+	
+	void PushPlayerState( int playerId, const SimulationPlayerState & playerState )
+	{
+		assert( playerId >= 0 );
+		assert( playerId < MaxPlayers );
+
+		// note: only push remote player state
+		if ( playerId != localAuthorityId )
+			simulationState.playerState[playerId] = playerState;
+	}
+	
+	void PushCubeState( int authorityId, int cubeId, const SimulationCubeState & cubeState )
+	{
+		assert( authorityId >= -1 );
+		assert( authorityId < MaxPlayers );
+
+		assert( cubeId >= 0 );
+		assert( cubeId < MaxCubes );
+		assert( cubeId < simulationState.numCubes );
+
+		// if we have default authority, dont allow non-authority pushes
+		if ( authorityByDefault && authorityId == -1 )
+			return;
+			
+		// dont let anybody push state to our "absolute" authority cases (player controlled cubes)
+		if ( simulationState.playerState[localAuthorityId].cubeId == cubeId )
+			return;
+		
+		// if we have default authority, other authority is not allowed to override ours
+		if ( authorityByDefault && authorityState.cubeAuthority[cubeId].authority == localAuthorityId && authorityId != localAuthorityId )
+			return;
+			
+		// if there is an existing authority, you cannot override it with no authority
+		if ( authorityId == -1 && authorityState.cubeAuthority[cubeId].authority != -1 )
+			return;
+			
+		// change authority if applicable
+		if ( authorityId != -1 && authorityId != authorityState.cubeAuthority[cubeId].authority )
+			authorityState.cubeAuthority[cubeId].authority = authorityId;
+		
+		// set cube state
+		simulationState.cubeState[cubeId] = cubeState;
+	}
+	
+	void GetSimulationState( SimulationState & simulationState )
+	{
+		simulationState = this->simulationState;
+	}
+	
+	void GetAuthorityState( AuthorityState & authorityState )
+	{
+		authorityState = this->authorityState;
+	}
+	
+private:
+	
+	int localAuthorityId;						// player id of local authority
+	bool authorityByDefault;					// true if we have authority by default (server)
+	SimulationState simulationState;			// the simulation state we are managing
+	AuthorityState authorityState;				// authority state for each cube
 };
 
 // ------------------------------------------------------------------------------
