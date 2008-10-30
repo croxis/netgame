@@ -9,8 +9,10 @@
 #include <string>
 #include <vector>
 
+#include "NetPlatform.h"
 #include "NetTransport.h"
-#include "NetLAN.h"
+#include "lan/NetLAN.h"
+#include "lan/NetAddress.h"
 
 using namespace std;
 using namespace net;
@@ -44,8 +46,9 @@ int main( int argc, char * argv[] )
 			TransportLAN * lan_transport = dynamic_cast<TransportLAN*>( transport );
 			char hostname[64+1] = "hostname";
 			// todo: get hostname override from command line (!)
-			GetHostName( hostname, sizeof(hostname) );
-			lan_transport->Connect( hostname );
+			// todo: detect if its an address vs. a hostname and connect direct by address if it is
+			TransportLAN::GetHostName( hostname, sizeof(hostname) );
+			lan_transport->ConnectClient( Address(127,0,0,1,lan_transport->GetConfig().meshPort ) );//hostname );
 		}
 		break;
 		

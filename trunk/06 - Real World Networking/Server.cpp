@@ -9,8 +9,9 @@
 #include <string>
 #include <vector>
 
+#include "NetPlatform.h"
 #include "NetTransport.h"
-#include "NetLAN.h"
+#include "lan/NetLAN.h"
 
 using namespace std;
 using namespace net;
@@ -43,8 +44,8 @@ int main( int argc, char * argv[] )
 		{
 			TransportLAN * lan_transport = dynamic_cast<TransportLAN*>( transport );
 			char hostname[64+1] = "hostname";
-			GetHostName( hostname, sizeof(hostname) );
-			lan_transport->Listen( hostname );
+			TransportLAN::GetHostName( hostname, sizeof(hostname) );
+			lan_transport->StartServer( hostname );
 		}
 		break;
 		

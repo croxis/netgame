@@ -5,7 +5,12 @@
 */
 
 #include "NetTransport.h"
-#include "NetLAN.h"
+#include "lan/NetLAN.h"
+//#include "opentnl/NetOpenTNL.h"
+//#include "raknet/NetRakNet.h"
+//#include "enet/NetENet.h"
+
+#include <assert.h>
 
 static net::TransportType transportType = net::Transport_None;
 static int transportCount = 0;
@@ -16,7 +21,7 @@ bool net::Transport::Initialize( TransportType type )
 	bool result = false;
 	switch ( type )
 	{
-		case Transport_LAN: result = InitializeSockets(); break;
+		case Transport_LAN: result = TransportLAN::Initialize(); break;
 		default: break;
 	}
 	transportType = type;
@@ -27,7 +32,7 @@ void net::Transport::Shutdown()
 {
 	switch ( transportType )
 	{
-		case Transport_LAN: ShutdownSockets();
+		case Transport_LAN: TransportLAN::Shutdown();
 		default: break;
 	}
 }

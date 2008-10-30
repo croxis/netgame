@@ -11,7 +11,10 @@
 
 #define NET_UNIT_TEST
 
-#include "NetLAN.h"
+#include "lan/NetBeacon.h"
+#include "lan/NetConnection.h"
+#include "lan/NetNodeMesh.h"
+#include "lan/NetLAN.h"
 
 using namespace std;
 using namespace net;
