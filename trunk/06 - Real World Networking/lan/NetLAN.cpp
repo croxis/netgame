@@ -4,7 +4,7 @@
 	Author: Glenn Fiedler <gaffer@gaffer.org>
 */
 
-#include "NetLAN.h"
+#include "../NetTransport.h"
 #include "NetSockets.h"
 #include "NetBeacon.h"
 #include "NetNodeMesh.h"
@@ -59,6 +59,7 @@ bool net::TransportLAN::StartServer( const char name[] )
 	assert( !mesh );
 	assert( !beacon );
 	assert( !listener );
+	printf( "lan transport: start server\n" );
 	beacon = new Beacon( name, config.protocolId, config.serverPort, config.listenerPort );
 	if ( !beacon->Start( config.beaconPort ) )
 	{
@@ -85,33 +86,55 @@ bool net::TransportLAN::StartServer( const char name[] )
 	return true;
 }
 
-bool net::TransportLAN::ConnectClient( const Address & address )
-{
-	node = new Node( config.protocolId, config.meshSendRate, config.timeout );
- 	if ( !node->Start( config.clientPort ) )
-	{
-		printf( "failed to start node on port %d\n", config.serverPort );
-		Stop();
-		return 1;
-	}
-	node->Join( address );
-	return true;
-}
-
-bool net::TransportLAN::ConnectClient( const char name[] )
+bool net::TransportLAN::ConnectClient( const char server[] )
 {
 	assert( !node );
 	assert( !mesh );
 	assert( !beacon );
 	assert( !listener );
-	listener = new Listener( config.protocolId, config.timeout );
-	if ( !listener->Start( config.listenerPort ) )
+	// connect by address?
+	unsigned int a = 0;
+	unsigned int b = 0;
+	unsigned int c = 0;
+	unsigned int d = 0;
+	unsigned int port = 0;
+	bool isAddress = false;
+	if ( sscanf( server, "%d.%d.%d.%d:%d", &a, &b, &c, &d, &port ) )
 	{
-		printf( "failed to start listener on port %d\n", config.listenerPort );
-		Stop();
-		return false;
+		isAddress = true;
 	}
-	// ...
+	else
+	{
+		port = config.meshPort;
+		if ( sscanf( server, "%d.%d.%d.%d", &a, &b, &c, &d ) )
+			isAddress = true;
+	}
+	// yes, this is a connect by address
+	if ( isAddress )
+	{
+		printf( "lan transport: client connect to address: %d.%d.%d.%d:%d\n", a, b, c, d, port );
+		node = new Node( config.protocolId, config.meshSendRate, config.timeout );
+	 	if ( !node->Start( config.clientPort ) )
+		{
+			printf( "failed to start node on port %d\n", config.serverPort );
+			Stop();
+			return 1;
+		}
+		node->Join( Address( (unsigned char) a, (unsigned char) b, (unsigned char) c, (unsigned char) d, (unsigned short) port ) );
+		return true;
+	}
+	// no, connect by hostname
+	else
+	{
+		printf( "lan transport: client connect to hostname: %s\n", server );
+		listener = new Listener( config.protocolId, config.timeout );
+		if ( !listener->Start( config.listenerPort ) )
+		{
+			printf( "failed to start listener on port %d\n", config.listenerPort );
+			Stop();
+			return false;
+		}
+	}
 	return true;
 }
 
@@ -119,6 +142,7 @@ bool net::TransportLAN::ConnectClient( const char name[] )
 
 void net::TransportLAN::Stop()
 {
+	printf( "lan transport: stop\n" );
 	if ( mesh )
 	{
 		delete mesh;
@@ -175,7 +199,7 @@ int net::TransportLAN::ReceivePacket( int & nodeId, unsigned char data[], int si
 
 class net::ReliabilitySystem & net::TransportLAN::GetReliability( int nodeId )
 {
-	// todo: implement
+	// todo: implement!
 	static ReliabilitySystem reliabilitySystem;
 	return reliabilitySystem;
 }
