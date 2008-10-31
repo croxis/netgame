@@ -452,6 +452,14 @@ public:
 				dBodyDisable( cubes[i].body );
 		}
 	}
+	
+	void SetPlayerInput( int playerId, const SimulationPlayerInput & input )
+	{
+		assert( playerId >= 0 );
+		assert( playerId < MaxPlayers );
+		assert( playerData[playerId].exists );
+		playerData[playerId].input = input;
+	}
 
 	void OnPlayerJoin( int playerId )
 	{
@@ -1672,6 +1680,18 @@ int main( int argc, char * argv[] )
 	
 	while ( true )
 	{
+		Input input = Input::Sample();
+		
+		if ( input.escape )
+			break;
+
+		SimulationPlayerInput playerInput;
+		playerInput.left = input.left;
+		playerInput.right = input.right;
+		playerInput.forward = input.up;
+		playerInput.back = input.down;
+		simulation.SetPlayerInput( 0, playerInput );
+		
 		simulation.Update( DeltaTime );
 
 		RenderState renderState;

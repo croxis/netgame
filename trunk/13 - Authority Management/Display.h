@@ -453,8 +453,8 @@ void UpdateDisplay( int interval = 0 )
 {
 	// update display
 	
-	GLint swapInterval = interval;
-	CGLSetParameter( CGLGetCurrentContext(), kCGLCPSwapInterval, &swapInterval );
+//	GLint swapInterval = interval;
+//	aglSetInteger( context, AGL_SWAP_INTERVAL, &swapInterval );
 	aglSwapBuffers( context );
 
 	// process events
@@ -495,27 +495,6 @@ void CloseDisplay()
 }
 
 #endif
-
-// common opengl routines
-
-void InitializeOpenGL( float viewport_x1, float viewport_y1, float viewport_x2, float viewport_y2, 
-					   float screen_x1, float screen_y1, float screen_x2, float screen_y2 )
-{	
-	glViewport( viewport_x1, viewport_y1, viewport_x2 - viewport_x1, viewport_y2 - viewport_y1 );
-
-	glMatrixMode( GL_PROJECTION );
-	glLoadIdentity();
-	glOrtho( screen_x1, screen_x2, screen_y2, screen_y1, -1.0f, 1.0f );
-
-	glMatrixMode( GL_MODELVIEW );
-	glLoadIdentity();
-
-	glEnable( GL_BLEND );
-	glEnable( GL_LINE_SMOOTH );
-	glHint( GL_LINE_SMOOTH_HINT, GL_NICEST );
-
-	glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );	
-}
 
 // high resolution timer (win32)
 
