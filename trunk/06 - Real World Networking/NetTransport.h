@@ -60,7 +60,7 @@ namespace net
 	};	
 
 	// lan transport implementation
-	//  + servers are advertized via net beacon
+	//  + servers are advertised via net beacon
 	//  + lan lobby is filled via net listener
 	//  + a mesh runs on the server IP and manages node connections
 	//  + a node runs on each transport, for the server with the mesh a local node also runs
@@ -118,7 +118,17 @@ namespace net
 		
 		bool ConnectClient( const char server[] );
 
-		// todo: add LAN lobby functionality
+		bool EnterLobby();
+		
+		int GetLobbyEntryCount();
+		
+		struct LobbyEntry
+		{
+			char name[65];
+			char address[65];
+		};
+		
+		bool GetLobbyEntryAtIndex( int index, LobbyEntry & entry );
 		
 		void Stop();
 

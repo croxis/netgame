@@ -136,7 +136,7 @@ bool net::TransportLAN::StartServer( const char name[] )
 	assert( !beacon );
 	assert( !listener );
 	printf( "lan transport: start server\n" );
-	beacon = new Beacon( name, config.protocolId, config.serverPort, config.listenerPort );
+	beacon = new Beacon( name, config.protocolId, config.listenerPort, config.serverPort );
 	if ( !beacon->Start( config.beaconPort ) )
 	{
 		printf( "failed to start beacon on port %d\n", config.beaconPort );
@@ -185,7 +185,7 @@ bool net::TransportLAN::ConnectClient( const char server[] )
 		if ( sscanf( server, "%d.%d.%d.%d", &a, &b, &c, &d ) )
 			isAddress = true;
 	}
-	// yes, this is a connect by address
+	// yes, connect by address
 	if ( isAddress )
 	{
 		printf( "lan transport: client connect to address: %d.%d.%d.%d:%d\n", a, b, c, d, port );
@@ -210,11 +210,42 @@ bool net::TransportLAN::ConnectClient( const char server[] )
 			Stop();
 			return false;
 		}
+		// todo: implement search for server via lan lobby (update) + timeout search
 	}
 	return true;
 }
 
-// todo: EnterLANLobby
+bool net::TransportLAN::EnterLobby()
+{
+	printf( "lan transport: enter lobby\n" );
+	listener = new Listener( config.protocolId, config.timeout );
+	if ( !listener->Start( config.listenerPort ) )
+	{
+		printf( "failed to start listener on port %d\n", config.listenerPort );
+		Stop();
+		return false;
+	}
+	return true;
+}
+
+int net::TransportLAN::GetLobbyEntryCount()
+{
+	if ( listener )
+		return listener->GetEntryCount();
+	else
+		return 0;
+}
+
+bool net::TransportLAN::GetLobbyEntryAtIndex( int index, LobbyEntry & entry )
+{
+	if ( !listener || index < 0 || index >= listener->GetEntryCount() )
+		return false;
+	const ListenerEntry & e = listener->GetEntry( index );
+	sprintf( entry.address, "%d.%d.%d.%d:%d", e.address.GetA(), e.address.GetB(), e.address.GetC(), e.address.GetD(), e.address.GetPort() );
+	strncpy( entry.name, e.name, sizeof( entry.name ) );
+	entry.name[ sizeof(entry.name) - 1 ] = '\0';
+	return true;
+}
 
 void net::TransportLAN::Stop()
 {

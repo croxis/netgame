@@ -23,9 +23,12 @@ client : Client
 	
 server : Server
 	./Server
-	
+
+lobby : Lobby
+	./Lobby
+
 test : Test
 	./Test
 	
 clean:
-	rm -f Client Server Test *.o *.a
+	rm -f Client Server Lobby Test *.o *.a

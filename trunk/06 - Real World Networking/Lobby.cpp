@@ -1,5 +1,5 @@
 /*
-	Server Example using Transport Layer
+ 	Lobby Example using Transport Layer
 	From "Networking for Game Programmers" - http://www.gaffer.org/networking-for-game-programmers
 	Author: Glenn Fiedler <gaffer@gaffer.org>
 */
@@ -35,21 +35,14 @@ int main( int argc, char * argv[] )
 		return 1;
 	}
 	
-	// connect to server (transport specific)
+	// enter lobby (transport specific)
 	
 	switch ( type )
 	{
 		case Transport_LAN:
 		{
 			TransportLAN * lan_transport = dynamic_cast<TransportLAN*>( transport );
-			char server[64+1] = "127.0.0.1:30000";
-//			TransportLAN::GetHostName( server, sizeof(server) );
-			if ( argc == 2 )
-			{
-				strncpy( server, argv[1], sizeof(server) );
-				server[64] = '\0';
-			}
-			lan_transport->ConnectClient( server );
+			lan_transport->EnterLobby();
 		}
 		break;
 		
@@ -61,9 +54,40 @@ int main( int argc, char * argv[] )
 
 	const float DeltaTime = 1.0f / 30.0f;
 
+	float accumulator = 0.0f;
+
 	while ( true )
 	{
+		accumulator += DeltaTime;
+
+		while ( accumulator >= 1.5f )
+		{
+			switch ( type )
+			{
+				case Transport_LAN:
+				{
+					TransportLAN * lan_transport = dynamic_cast<TransportLAN*>( transport );
+					printf( "---------------------------------------------\n" );
+					const int entryCount = lan_transport->GetLobbyEntryCount();
+					for ( int i = 0; i < entryCount; ++i )
+					{
+						TransportLAN::LobbyEntry entry;
+						if ( lan_transport->GetLobbyEntryAtIndex( i, entry ) )
+							printf( "%s -> %s\n", entry.name, entry.address );
+					}
+					printf( "---------------------------------------------\n" );
+				}
+				break;
+
+				default:
+					break;
+			}
+
+			accumulator -= 1.5f;
+		}
+		
 		transport->Update( DeltaTime );
+		
 		wait_seconds( DeltaTime );
 	}
 	

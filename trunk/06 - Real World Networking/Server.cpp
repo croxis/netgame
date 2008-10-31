@@ -1,5 +1,5 @@
 /*
-	Server Example using Node Mesh
+	Server Example using Transport Layer
 	From "Networking for Game Programmers" - http://www.gaffer.org/networking-for-game-programmers
 	Author: Glenn Fiedler <gaffer@gaffer.org>
 */
