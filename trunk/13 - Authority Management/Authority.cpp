@@ -53,7 +53,7 @@ const float ContactSurfaceLayer = 0.001f;
 #define USE_QUICK_STEP
 #define CUBE_DISPLAY_LIST
 #define FLOOR_AND_WALLS_DISPLAY_LIST
-#define RENDER_SHADOWS
+//#define RENDER_SHADOWS
 //#define DEBUG_SHADOW_VOLUMES
 //#define CAMERA_FOLLOW
 
@@ -77,7 +77,7 @@ struct RenderState
 		Player()
 		{
 			exists = false;
-			position = math::Vector(0,0,0);			// todo: is this neccessary?
+			position = math::Vector(0,0,0);
 		}
 	};
 	

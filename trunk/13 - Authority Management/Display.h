@@ -73,8 +73,8 @@ bool OpenDisplay( const char title[], int width, int height )
     // create window
 
     RECT rect;
-    rect.left = 0;
-    rect.top = 0;
+	rect.left = 0;
+	rect.top = 0;
     rect.right = width;
     rect.bottom = height;
     AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, 0);
@@ -399,12 +399,10 @@ pascal OSStatus keyboardEventHandler( EventHandlerCallRef nextHandler, EventRef 
 bool OpenDisplay( const char title[], int width, int height )
 {
 	Rect rect;
-	rect.left = 0;
-	rect.top = 0;
+	rect.left = 240;			// todo: center window
+	rect.top = 110;
 	rect.right = rect.left + width;
 	rect.bottom = rect.top + height;
-
-	// todo: center window!
 	
 	OSErr result = CreateNewWindow( kDocumentWindowClass, 
 					                (kWindowStandardDocumentAttributes | 
