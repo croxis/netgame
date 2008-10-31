@@ -77,6 +77,8 @@ namespace net
 
 		static bool GetHostName( char hostname[], int size );
 
+		static void UnitTest();
+
 		// lan specific interface
 		
 		TransportLAN();
@@ -137,7 +139,7 @@ namespace net
 		void Update( float deltaTime );
 		
 		TransportType GetType() const;
-		
+				
 	private:
 
 		Config config;

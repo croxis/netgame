@@ -2,11 +2,19 @@
 
 flags = -Wall -DDEBUG # -O3
 
-% : %.cpp NetPlatform.h NetReliability.h NetFlowControl.h NetTransport.h lan/NetAddress.h lan/NetSockets.h lan/NetBeacon.h lan/NetConnection.h lan/NetNodeMesh.h
-	g++ $< -o $@ NetTransport.cpp lan/NetLAN.cpp ${flags}
+net_headers := $(wildcard *.h)
+lan_headers := $(wildcard lan/*.h)
+
+NetTransport.o : makefile NetTransport.h NetTransport.cpp NetPlatform.h ${lan_headers}
+	g++ NetTransport.cpp -c -o NetTransport.o ${flags}
+
+% : %.cpp NetTransport.o #{net_headers}
+	g++ $< -o $@ NetTransport.o ${flags}
 
 all : Client Server Test
 
+transport : NetTransport.o	
+	
 client : Client
 	./Client
 	
@@ -17,4 +25,4 @@ test : Test
 	./Test
 	
 clean:
-	rm -f Client Server Test
+	rm -f Client Server Test *.o *.a
