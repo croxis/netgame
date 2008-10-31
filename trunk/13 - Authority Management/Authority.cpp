@@ -54,6 +54,7 @@ const float ContactSurfaceLayer = 0.001f;
 #define CUBE_DISPLAY_LIST
 #define FLOOR_AND_WALLS_DISPLAY_LIST
 #define MULTITHREADED
+//#define VSYNC
 //#define RENDER_SHADOWS
 //#define DEBUG_SHADOW_VOLUMES
 //#define CAMERA_FOLLOW
@@ -1764,8 +1765,6 @@ private:
 
 // ------------------------------------------------------------------------------
 
-const float DeltaTime = 1.0f / 60.0f;
-
 int main( int argc, char * argv[] )
 {
 	if ( !OpenDisplay( "Authority Management", DisplayWidth, DisplayHeight ) )
@@ -1781,19 +1780,35 @@ int main( int argc, char * argv[] )
 	simulation.OnPlayerJoin( 0 );
 	simulation.OnPlayerJoin( 1 );
 	
+	Timer timer;
+	
 	while ( true )
 	{
+		#ifndef VSYNC
+		float deltaTime = timer.delta();
+		if ( deltaTime < 0.001f )
+			deltaTime = 0.001f;
+		if ( deltaTime > 0.01f )
+			deltaTime = 0.01f;
+		#else
+		float deltaTime = 1.0f / 60.0f;
+		#endif
+		
 		RenderState renderState;
 		simulation.GetRenderState( renderState );
 
-		SimulationWorkerThread workerThread( &simulation, DeltaTime );
+		SimulationWorkerThread workerThread( &simulation, deltaTime );
 		workerThread.Start();
 
 		renderer.ClearScreen();
 		renderer.Render( renderState, 0, 0, DisplayWidth, DisplayHeight );
 		renderer.RenderShadows( renderState, 0, 0, DisplayWidth, DisplayHeight );
 
+		#ifdef VSYNC
 		UpdateDisplay( 1 );
+		#else
+		UpdateDisplay( 0 );
+		#endif
 
 		Input input = Input::Sample();
 		
