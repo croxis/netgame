@@ -194,7 +194,7 @@ void CloseDisplay()
 CFDictionaryRef gOldDisplayMode;
 bool gOldDisplayModeValid = false;
 
-static AGLContext setupAGL( WindowRef window, int width, int height, int refresh, bool fullscreen )
+static AGLContext setupAGL( WindowRef window, int width, int height )
 {	
 	if ( (Ptr) kUnresolvedCFragSymbolAddress == (Ptr) aglChoosePixelFormat )
 		return 0;
@@ -208,40 +208,10 @@ static AGLContext setupAGL( WindowRef window, int width, int height, int refresh
 
 	AGLPixelFormat format = NULL;
 
-	if ( fullscreen )
-	{
-		printf( "error: fullscreen not supported\n" );
-		return 0;
-		
-		/*
-		attributes[sizeof(attributes)/4-1] = AGL_FULLSCREEN;
-		
-		int display = 0;
-		
-		CFDictionaryRef displayMode = CGDisplayBestModeForParametersAndRefreshRate( display, 32, width, height, refresh, NULL );
-		
-		if ( displayMode ) 
-		{
-	        gOldDisplayMode = CGDisplayCurrentMode( display );
-			gOldDisplayModeValid = true;
-	        CGDisplaySwitchToMode( display, displayMode );
-		}
-		
-		GDHandle gdhDisplay;
-		OSStatus err = DMGetGDeviceByDisplayID( display, &gdhDisplay, false );
-		if ( err != noErr )
-			return 0;
-			
-		format = aglChoosePixelFormat( &gdhDisplay, 1, attributes );
-		*/
-	}
-	else
-	{
-		format = aglChoosePixelFormat( NULL, 0, attributes );
+	format = aglChoosePixelFormat( NULL, 0, attributes );
 
-		if ( !format ) 
-			return 0;
-	}	
+	if ( !format ) 
+		return 0;
 
 	AGLContext context = aglCreateContext( format, 0 );
 
@@ -447,9 +417,7 @@ bool OpenDisplay( const char title[], int width, int height )
 
 	SetWindowTitleWithCFString( window, CFStringCreateWithCString( 0, title, CFStringGetSystemEncoding() ) );
 
-	int refresh = 60;
-	bool fullscreen = false;//true;
-	context = setupAGL( window, width, height, refresh, fullscreen );
+	context = setupAGL( window, width, height );
 
 	if ( !context )
 		return false;
@@ -489,7 +457,6 @@ void UpdateDisplay( int interval = 0 )
 	
 	GLint swapInterval = interval;
 	CGLSetParameter( CGLGetCurrentContext(), kCGLCPSwapInterval, &swapInterval );
-
 	aglSwapBuffers( context );
 
 	// process events

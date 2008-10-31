@@ -1,20 +1,25 @@
 # makefile for macosx
 
-flags = -Wall -Iode -DDEBUG # -O3
+flags = -msse3 -mfpmath=sse -march=prescott -O3 -Wall -Iode
+#flags = -Wall -Iode -DDEBUG
+
 libs = -Lode -lode -lruby
 frameworks = -framework Carbon -framework OpenGL -framework AGL
 
-% : %.cpp Display.h Platform.h Mathematics.h
+% : %.cpp Display.h Platform.h Mathematics.h NetStream.h
 	g++ $< -o $@ ${flags} ${libs} ${frameworks}
 
-all : Authority
-
-server : Authority
-	./Authority
-
-client : Authority
-	./Authority 127.0.0.1
+%.app : %
+	rm -rf $<.app
+	mkdir $<.app
+	mkdir $<.app/Contents
+	mkdir $<.app/Contents/MacOS
+	cp $< $<.app/Contents/MacOS/
 	
+authority : Authority.app Authority
+	open Authority.app
+	
+all : authority
+
 clean:
-	rm -f Authority
-	
+	rm -rf Authority Authority.app

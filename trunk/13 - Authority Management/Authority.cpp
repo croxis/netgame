@@ -13,7 +13,8 @@
 #include "Platform.h"
 #include "Display.h"
 #include "Mathematics.h"
-//#include "Transport.h"
+#include "NetStream.h"
+//#include "NetTransport.h"
 
 using namespace std;
 using namespace net;
@@ -49,7 +50,12 @@ const float CFM = 0.05f;
 const float MaximumCorrectingVelocity = 100.0f;
 const float ContactSurfaceLayer = 0.001f;
 
-#define MULTITHREADED
+#define USE_QUICK_STEP
+#define CUBE_DISPLAY_LIST
+#define FLOOR_AND_WALLS_DISPLAY_LIST
+#define RENDER_SHADOWS
+//#define DEBUG_SHADOW_VOLUMES
+//#define CAMERA_FOLLOW
 
 // ------------------------------------------------------------------------------
 
@@ -210,6 +216,8 @@ public:
 		
 		// add some cubes to the world
 
+		numCubes = 0;
+
 		srand( 280090412 );
 
 		AddCube( math::Vector(-5,10,0), 1 );
@@ -229,18 +237,6 @@ public:
 			AddCube( math::Vector(x,y,z), scale );
 		}
 		
-		srand( 100 );
-
-		for ( int i = 0; i < 29; ++i )
-		{
-			float x = math::random_float( -Boundary, +Boundary );
-			float y = math::random_float( 2.0f, 4.0f );
-			float z = math::random_float( -Boundary, +Boundary );
-			float scale = math::random_float( 0.1f, 0.2f );
-
-			AddCube( math::Vector(x,y,z), scale );
-		}
-			
 		// players have not joined yet
 		
 		for ( int i = 0; i < MaxPlayers; ++i )
@@ -683,83 +679,6 @@ protected:
 	}
 };
 
-// ------------------------------------------------------------------------------
-
-// worker thread 
-
-#ifdef MULTITHREADED
-#include <pthread.h>
-#endif
-
-class WorkerThread
-{
-public:
-	
-	WorkerThread()
-	{
-		#ifdef MULTITHREADED
-		thread = 0;
-		#endif
-	}
-	
-	virtual ~WorkerThread()
-	{
-		#ifdef MULTITHREADED
-		thread = 0;
-		#endif
-	}
-	
-	bool Start()
-	{
-		#ifdef MULTITHREADED
-	
-			if ( pthread_create( &thread, NULL, StaticRun, (void*)this ) != 0 )
-			{
-				printf( "error: pthread_create failed\n" );
-				return false;
-			}
-		
-		#else
-		
-			Run();
-			
-		#endif
-		
-		return true;
-	}
-	
-	bool Join()
-	{
-		#ifdef MULTITHREADED
-		if ( pthread_join( thread, NULL ) != 0 )
-		{
-			printf( "error: pthread_join failed\n" );
-			return false;
-		}
-		#endif
-		return true;
-	}
-	
-protected:
-	
-	static void * StaticRun( void * data )
-	{
-		WorkerThread * self = (WorkerThread*) data;
-		self->Run();
-		return NULL;
-	}
-	
-	virtual void Run() = 0;			// note: override this to implement your thread task
-	
-private:
-
-	#ifdef MULTITHREADED	
-	pthread_t thread;
-	#endif
-};
-
-// ------------------------------------------------------------------------------
-
 // authority management
 
 struct AuthorityData
@@ -932,9 +851,840 @@ private:
 
 // ------------------------------------------------------------------------------
 
+// abstract network state (decouple sim and networking)
+
+struct NetworkPlayerInput
+{
+	NetworkPlayerInput()
+	{
+		left = false;
+		right = false;
+		forward = false;
+		back = false;
+	}
+	
+	bool left;
+	bool right;
+	bool forward;
+	bool back;
+	
+	bool Serialize( Stream & stream, int playerId )
+	{
+		stream.SerializeBoolean( left );
+		stream.SerializeBoolean( right );
+		stream.SerializeBoolean( forward );
+		stream.SerializeBoolean( back );
+		return true;
+	}
+};
+
+struct NetworkPlayerState
+{
+	unsigned int cubeId;
+
+	bool Serialize( Stream & stream, int playerId )
+	{
+		stream.SerializeInteger( cubeId, 0, MaxCubes - 1 );
+		return true;
+	}
+};
+
+struct NetworkCubeState
+{
+	bool enabled;
+	bool authority;
+	math::Vector position;
+	math::Vector linearVelocity;
+	math::Vector angularVelocity;
+	math::Quaternion orientation;
+
+	NetworkCubeState()
+	{
+		enabled = false;
+		authority = false;
+		position = math::Vector(0,0,0);
+		linearVelocity = math::Vector(0,0,0);
+		angularVelocity = math::Vector(0,0,0);
+		orientation = math::Quaternion(1,0,0,0);
+	}
+
+	bool Serialize( Stream & stream )
+	{
+		stream.SerializeBoolean( enabled );
+		stream.SerializeBoolean( authority );
+		//stream.SerializeVector( position );
+		//stream.SerializeQuaternion( orientation );
+
+		// todo: add vector and quaternion serialize methods, ideally compressed vector and quaternion
+
+		if ( enabled )
+		{
+//			stream.SerializeVector( linearVelocity );
+//			stream.SerializeVector( angularVelocity );
+		}
+
+		return true;
+	}
+};
+
+struct NetworkPlayerObjects
+{
+	unsigned int numCubes;
+	NetworkCubeState cubes[MaxCubes];
+
+	bool Serialize( Stream & stream, int playerId )
+	{
+		stream.SerializeInteger( numCubes, 0, MaxCubes );
+		for ( unsigned int i = 0 ; i < numCubes; ++i )
+		{
+			if ( !cubes[i].Serialize( stream ) )
+				return false;
+		}
+		return true;
+	}
+};
+
+// ------------------------------------------------------------------------------
+
+// rendering
+
+class Renderer
+{
+public:
+	
+	Renderer( int displayWidth, int displayHeight )
+	{
+		this->displayWidth = displayWidth;
+		this->displayHeight = displayHeight;
+		
+		lightPosition = math::Vector( 25.0f, 50.0f, -25.0f );
+		
+		#ifdef CUBE_DISPLAY_LIST
+		
+			// setup cube display list
+		
+			cubeDisplayList = glGenLists( 1 );
+		
+			glNewList( cubeDisplayList, GL_COMPILE );
+		
+			glBegin( GL_QUADS );
+
+				glNormal3f(  0,  0, +1 );
+				glVertex3f( -1, -1, +1 );
+				glVertex3f( -1, +1, +1 );
+				glVertex3f( +1, +1, +1 );
+				glVertex3f( +1, -1, +1 );
+
+				glNormal3f(  0,  0,  -1 );
+				glVertex3f( -1, -1, -1 );
+				glVertex3f( +1, -1, -1 );
+				glVertex3f( +1, +1, -1 );
+				glVertex3f( -1, +1, -1 );
+
+				glNormal3f(  0, +1,  0 );
+				glVertex3f( -1, +1, -1 );
+				glVertex3f( +1, +1, -1 );
+				glVertex3f( +1, +1, +1 );
+				glVertex3f( -1, +1, +1 );
+
+				glNormal3f(  0, -1,  0 );
+				glVertex3f( -1, -1, -1 );
+				glVertex3f( -1, -1, +1 );
+				glVertex3f( +1, -1, +1 );
+				glVertex3f( +1, -1, -1 );
+
+				glNormal3f( +1,  0,  0 );
+				glVertex3f( +1, -1, -1 );
+				glVertex3f( +1, -1, +1 );
+				glVertex3f( +1, +1, +1 );
+				glVertex3f( +1, +1, -1 );
+
+				glNormal3f( -1,  0,  0 );
+				glVertex3f( -1, -1, -1 );
+				glVertex3f( -1, +1, -1 );
+				glVertex3f( -1, +1, +1 );
+				glVertex3f( -1, -1, +1 );
+
+			glEnd();
+        
+			glEndList();
+			
+		#endif
+		
+		#ifdef FLOOR_AND_WALLS_DISPLAY_LIST
+
+			floorAndWallsDisplayList = glGenLists( 1 );
+		
+			glNewList( floorAndWallsDisplayList, GL_COMPILE );
+		
+			const float r = 1.0f;
+			const float g = 1.0f;
+			const float b = 1.0f;
+			const float a = 1.0f;
+
+			glColor3f( r, g, b );
+
+	        GLfloat color[] = { r, g, b, a };
+
+			glMaterialfv( GL_FRONT, GL_AMBIENT, color );
+			glMaterialfv( GL_FRONT, GL_DIFFUSE, color );
+			glColor3f( r, g, b );
+
+			const float s = Boundary;
+
+	        glBegin( GL_QUADS );
+
+				glNormal3f( 0, +1, 0 );
+				glVertex3f( -s, 0, -15 );
+				glVertex3f( +s, 0, -15 );
+				glVertex3f( +s, 0, +10 );
+				glVertex3f( -s, 0, +10 );
+
+				glNormal3f( +1, 0, 0 );
+				glVertex3f( -s, -s*2, -s*2 );
+				glVertex3f( -s, -s*2, +s*2 );
+				glVertex3f( -s, +s*2, +s*2 );
+				glVertex3f( -s, +s*2, -s*2 );
+		
+				glNormal3f( -1, 0, 0 );
+				glVertex3f( +s, -s*2, -s*2 );
+				glVertex3f( +s, +s*2, -s*2 );
+				glVertex3f( +s, +s*2, +s*2 );
+				glVertex3f( +s, -s*2, +s*2 );
+
+				glNormal3f( 0, 0, -1 );
+				glVertex3f( -s*2, -s*2, +s );
+				glVertex3f( +s*2, -s*2, +s );
+				glVertex3f( +s*2, +s*2, +s );
+				glVertex3f( -s*2, +s*2, +s );
+
+			glEnd();
+        
+			glEndList();
+
+		#endif
+	}
+	
+	~Renderer()
+	{
+		#ifdef CUBE_DISPLAY_LIST
+		glDeleteLists( cubeDisplayList, 1 );
+		#endif
+		#ifdef FLOOR_AND_WALS_DISPLAY_LIST
+		glDeleteLists( floorAndWallsDisplayList, 1 );
+		#endif
+	}
+	
+	void ClearScreen()
+	{
+		glViewport( 0, 0, DisplayWidth, DisplayHeight );
+		glDisable( GL_SCISSOR_TEST );
+		glClearStencil( 0 );
+		glClearColor( 1.0f, 1.0f, 1.0f, 1.0f );		
+		glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT );
+	}
+	
+	void Render( RenderState & renderState, float x1, float y1, float x2, float y2 )
+	{
+		// setup viewport & scissor
+	
+		glViewport( x1, y1, x2 - x1, y2 - y1 );
+		glScissor( x1, y1, x2 - x1, y2 - y1 );
+		glEnable( GL_SCISSOR_TEST );
+
+		// setup view
+
+		glMatrixMode( GL_PROJECTION );
+		glLoadIdentity();
+		float fov = 45.0f;
+		gluPerspective( fov, ( x2 - x1 ) / ( y2 - y1 ), 0.1f, 50.0f );
+	
+		#ifdef CAMERA_FOLLOW
+	
+			if ( renderState.localPlayerId == -1 )
+				return;
+			
+			assert( renderState.player[localPlayerId].exists );
+			
+			math::Vector playerPosition = renderState.player[renderState.localPlayerId].position;
+
+			float x = Clamp( playerPosition.x, -Boundary * 0.95f, +Boundary * 0.95f );
+			float z = Clamp( playerPosition.z, -Boundary * 0.8f, +Boundary * 0.95f );
+			float h1 = 1.5f;
+			float h2 = 2.0f;
+			float d1 = 2.0f;
+			float d2 = 5.0f;
+	
+			glMatrixMode( GL_MODELVIEW );
+			glLoadIdentity();
+			glScalef( -1.0f, 1.0f, 1.0f );
+			gluLookAt( x, h2, z - d2, 
+			           x, h1, z - d1,
+					   0.0f, 1.0f, 0.0 );
+	
+		#else
+
+			glMatrixMode( GL_MODELVIEW );
+			glLoadIdentity();
+			glScalef( -1.0f, 1.0f, 1.0f );
+			gluLookAt( 0.0f, 4.0f, -16.0f, 
+			           0.0f, 3.0f, 0.0f,
+					   0.0f, 1.0f, 0.0 );
+		
+		#endif
+				
+		// setup lights
+
+        glShadeModel( GL_SMOOTH );
+	
+        glEnable( GL_LIGHT0 );
+
+        GLfloat lightAmbientColor[] = { 0.5, 0.5, 0.5, 1.0 };
+        glLightModelfv( GL_LIGHT_MODEL_AMBIENT, lightAmbientColor );
+
+        glLightf( GL_LIGHT0, GL_LINEAR_ATTENUATION, 0.01f );
+
+		GLfloat position[4];
+		position[0] = lightPosition.x;
+		position[1] = lightPosition.y;
+		position[2] = lightPosition.z;
+		position[3] = 1.0f;
+        glLightfv( GL_LIGHT0, GL_POSITION, position );
+
+		// enable depth buffering and backface culling
+	
+		glEnable( GL_DEPTH_TEST );
+	    glDepthFunc( GL_LEQUAL );
+    
+	    glEnable( GL_CULL_FACE );
+	    glCullFace( GL_BACK );
+	    glFrontFace( GL_CCW );
+
+		// update cube colors
+		
+		for ( int i = 0; i < renderState.numCubes; ++i )
+		{
+			const float dr = renderState.cubes[i].r - cubeData[i].r;
+			const float dg = renderState.cubes[i].g - cubeData[i].g;
+			const float db = renderState.cubes[i].b - cubeData[i].b;
+			
+			const float epsilon = 0.001f;
+			
+			if ( math::abs(dr) > epsilon )
+				cubeData[i].r += dr * ColorChangeTightness;
+			else
+				cubeData[i].r = renderState.cubes[i].r;
+
+			if ( math::abs(dg) > epsilon )
+				cubeData[i].g += dg * ColorChangeTightness;
+			else
+				cubeData[i].g = renderState.cubes[i].g;
+
+			if ( math::abs(db) > epsilon )
+				cubeData[i].b += db * ColorChangeTightness;
+			else
+				cubeData[i].b = renderState.cubes[i].b;
+		}
+
+		// render scene
+
+		glEnable( GL_LIGHTING );
+		glEnable( GL_NORMALIZE );
+
+		glDepthFunc( GL_LESS );
+
+		RenderFloorAndWalls();
+		
+		RenderCubes( renderState.numCubes, renderState.cubes );
+
+		glDisable( GL_LIGHTING );
+		glDisable( GL_NORMALIZE );
+	}
+	
+	void RenderShadows( RenderState & renderState, float x1, float y1, float x2, float y2 )
+	{
+	#ifdef RENDER_SHADOWS
+		
+		// render shadows
+
+		RenderCubeShadowVolumes( renderState.numCubes, renderState.cubes, lightPosition );
+	
+		RenderShadow();
+		
+	#endif	
+	}
+	
+	void RenderFloorAndWalls()
+	{
+		#ifdef FLOOR_AND_WALLS_DISPLAY_LIST
+		
+			glCallList( floorAndWallsDisplayList );
+
+		#else
+		
+			const float r = 1.0f;
+			const float g = 1.0f;
+			const float b = 1.0f;
+			const float a = 1.0f;
+
+			glColor3f( r, g, b );
+
+	        GLfloat color[] = { r, g, b, a };
+
+			glMaterialfv( GL_FRONT, GL_AMBIENT, color );
+			glMaterialfv( GL_FRONT, GL_DIFFUSE, color );
+			glColor3f( r, g, b );
+
+			const float s = Boundary;
+
+	        glBegin( GL_QUADS );
+
+				glNormal3f( 0, +1, 0 );
+				glVertex3f( -s, 0, -15 );
+				glVertex3f( +s, 0, -15 );
+				glVertex3f( +s, 0, +10 );
+				glVertex3f( -s, 0, +10 );
+
+				glNormal3f( +1, 0, 0 );
+				glVertex3f( -s, -s*2, -s*2 );
+				glVertex3f( -s, -s*2, +s*2 );
+				glVertex3f( -s, +s*2, +s*2 );
+				glVertex3f( -s, +s*2, -s*2 );
+		
+				glNormal3f( -1, 0, 0 );
+				glVertex3f( +s, -s*2, -s*2 );
+				glVertex3f( +s, +s*2, -s*2 );
+				glVertex3f( +s, +s*2, +s*2 );
+				glVertex3f( +s, -s*2, +s*2 );
+
+				glNormal3f( 0, 0, -1 );
+				glVertex3f( -s*2, -s*2, +s );
+				glVertex3f( +s*2, -s*2, +s );
+				glVertex3f( +s*2, +s*2, +s );
+				glVertex3f( -s*2, +s*2, +s );
+
+			glEnd();
+			
+		#endif
+	}
+	
+	void RenderCubes( int numCubes, RenderState::Cube cubes[] )
+	{
+		// render cubes
+
+		for ( int i = 0; i < numCubes; ++i )
+		{
+			const RenderState::Cube & cube = cubes[i];
+
+			PushTransform( cube.position, cube.orientation, cube.scale );
+
+			const float r = cubeData[i].r;
+			const float g = cubeData[i].g;
+			const float b = cubeData[i].b;
+
+	        GLfloat color[] = { r, g, b, 1.0f };
+
+			glMaterialfv( GL_FRONT, GL_AMBIENT, color );
+			glMaterialfv( GL_FRONT, GL_DIFFUSE, color );
+
+			#ifdef CUBE_DISPLAY_LIST
+
+				glCallList( cubeDisplayList );
+
+			#else
+
+		        glBegin( GL_QUADS );
+
+					glNormal3f(  0,  0, +1 );
+					glVertex3f( -1, -1, +1 );
+					glVertex3f( -1, +1, +1 );
+					glVertex3f( +1, +1, +1 );
+					glVertex3f( +1, -1, +1 );
+
+					glNormal3f(  0,  0,  -1 );
+					glVertex3f( -1, -1, -1 );
+					glVertex3f( +1, -1, -1 );
+					glVertex3f( +1, +1, -1 );
+					glVertex3f( -1, +1, -1 );
+
+					glNormal3f(  0, +1,  0 );
+					glVertex3f( -1, +1, -1 );
+					glVertex3f( +1, +1, -1 );
+					glVertex3f( +1, +1, +1 );
+					glVertex3f( -1, +1, +1 );
+
+					glNormal3f(  0, -1,  0 );
+					glVertex3f( -1, -1, -1 );
+					glVertex3f( -1, -1, +1 );
+					glVertex3f( +1, -1, +1 );
+					glVertex3f( +1, -1, -1 );
+
+					glNormal3f( +1,  0,  0 );
+					glVertex3f( +1, -1, -1 );
+					glVertex3f( +1, -1, +1 );
+					glVertex3f( +1, +1, +1 );
+					glVertex3f( +1, +1, -1 );
+
+					glNormal3f( -1,  0,  0 );
+					glVertex3f( -1, -1, -1 );
+					glVertex3f( -1, +1, -1 );
+					glVertex3f( -1, +1, +1 );
+					glVertex3f( -1, -1, +1 );
+
+				glEnd();
+
+			#endif
+
+			PopTransform();
+		}
+	}
+	
+	void RenderCubeShadowVolumes( int numCubes, RenderState::Cube cubes[], const math::Vector & lightPosition )
+	{
+		#ifdef DEBUG_SHADOW_VOLUMES
+		
+			// visualize shadow volumes in pink
+
+			glDepthMask( GL_FALSE );
+			
+			glColor3f( 1.0f, 0.75f, 0.8f );
+
+			for ( int i = 0; i < numCubes; ++i )
+			{
+				const RenderState::Cube & cube = cubes[i];
+
+				PushTransform( cube.position, cube.orientation, cube.scale );
+
+				math::Vector localLightPosition = InverseTransform( lightPosition, cube.position, cube.orientation, cube.scale );
+
+	            RenderShadowVolume( cube, localLightPosition );
+
+				PopTransform();
+			}
+
+			glDepthMask( GL_TRUE);
+		
+		#else
+			
+			// render shadow volumes to stencil buffer
+		
+			glColorMask( GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE );
+			glDepthMask( GL_FALSE );
+            
+			glEnable( GL_STENCIL_TEST );
+
+            glCullFace( GL_BACK );
+            glStencilFunc( GL_ALWAYS, 0x0, 0xff );
+            glStencilOp( GL_KEEP, GL_KEEP, GL_INCR );
+
+			for ( int i = 0; i < numCubes; ++i )
+			{
+				const RenderState::Cube & cube = cubes[i];
+
+				PushTransform( cube.position, cube.orientation, cube.scale );
+
+				math::Vector localLightPosition = InverseTransform( lightPosition, cube.position, cube.orientation, cube.scale );
+
+	            RenderShadowVolume( cube, localLightPosition );
+	
+				PopTransform();
+			}
+
+            glCullFace( GL_FRONT );
+            glStencilOp( GL_KEEP, GL_KEEP, GL_DECR );
+
+			for ( int i = 0; i < numCubes; ++i )
+			{
+				const RenderState::Cube & cube = cubes[i];
+
+				PushTransform( cube.position, cube.orientation, cube.scale );
+
+				math::Vector localLightPosition = InverseTransform( lightPosition, cube.position, cube.orientation, cube.scale );
+
+	            RenderShadowVolume( cube, localLightPosition );
+	
+				PopTransform();
+			}
+		
+			glCullFace( GL_BACK );
+			glColorMask( GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE );
+			glDepthMask( GL_TRUE);
+
+			glDisable( GL_STENCIL_TEST );
+			
+		#endif
+	}
+	
+	void RenderShadowVolume( const RenderState::Cube & cube, const math::Vector & light )
+	{
+        glBegin( GL_QUADS );
+
+        RenderSilhouette( light, math::Vector(-1,+1,-1), math::Vector(+1,+1,-1) );
+        RenderSilhouette( light, math::Vector(+1,+1,-1), math::Vector(+1,+1,+1) );
+        RenderSilhouette( light, math::Vector(+1,+1,+1), math::Vector(-1,+1,+1) );
+        RenderSilhouette( light, math::Vector(-1,+1,+1), math::Vector(-1,+1,-1) );
+
+        RenderSilhouette( light, math::Vector(-1,-1,-1), math::Vector(+1,-1,-1) );
+		RenderSilhouette( light, math::Vector(+1,-1,-1), math::Vector(+1,-1,+1) );
+        RenderSilhouette( light, math::Vector(+1,-1,+1), math::Vector(-1,-1,+1) );
+		RenderSilhouette( light, math::Vector(-1,-1,+1), math::Vector(-1,-1,-1) );
+
+        RenderSilhouette( light, math::Vector(-1,+1,-1), math::Vector(-1,-1,-1) );
+        RenderSilhouette( light, math::Vector(+1,+1,-1), math::Vector(+1,-1,-1) );
+        RenderSilhouette( light, math::Vector(+1,+1,+1), math::Vector(+1,-1,+1) );
+        RenderSilhouette( light, math::Vector(-1,+1,+1), math::Vector(-1,-1,+1) );
+
+        glEnd();
+	}
+
+    void RenderSilhouette( const math::Vector & light, math::Vector a, math::Vector b )
+    {
+        // determine edge normals
+
+        math::Vector midpoint = ( a + b ) * 0.5f;
+        
+        math::Vector leftNormal;
+
+		const float epsilon = 0.00001f;
+
+        if ( midpoint.x > epsilon || midpoint.x < -epsilon )
+            leftNormal = math::Vector( midpoint.x, 0, 0 );
+        else
+            leftNormal = math::Vector( 0, midpoint.y, 0 );
+
+        math::Vector rightNormal = midpoint - leftNormal;
+
+        // check if silhouette edge
+
+        const math::Vector differenceA = a - light;
+
+		const float leftDot = leftNormal.dot( differenceA );
+		const float rightDot = rightNormal.dot( differenceA );
+
+        if ( ( leftDot < 0 && rightDot > 0 ) || ( leftDot > 0 && rightDot < 0 ) )
+        {
+            // extrude quad
+
+            const math::Vector differenceB = b - light;
+
+            math::Vector _a = a + differenceA * ShadowDistance;
+            math::Vector _b = b + differenceB * ShadowDistance;
+
+            // ensure correct winding order for silhouette edge
+
+            const math::Vector cross = ( b - a ).cross( differenceA );
+            
+            if ( cross.dot( a ) < 0 )
+            {
+                math::Vector t = a;
+                a = b;
+                b = t;
+
+                t = _a;
+                _a = _b;
+                _b = t;
+            }
+
+            // render extruded quad
+
+            glVertex3f( b.x, b.y, b.z );
+            glVertex3f( a.x, a.y, a.z ); 
+            glVertex3f( _a.x, _a.y, _a.z ); 
+            glVertex3f( _b.x, _b.y, _b.z );
+        }
+    }
+	
+	void RenderShadow()
+	{
+		#ifndef DEBUG_SHADOW_VOLUMES
+		
+		EnterScreenSpace();
+	
+		glDisable( GL_DEPTH_TEST );
+
+		glEnable( GL_STENCIL_TEST );
+
+		glStencilFunc( GL_NOTEQUAL, 0x0, 0xff );
+		glStencilOp( GL_REPLACE, GL_REPLACE, GL_REPLACE );
+
+		glEnable( GL_BLEND );
+		glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
+
+		glColor4f( 0.0f, 0.0f, 0.0f, 0.15f );
+
+		glBegin( GL_QUADS );
+
+			glVertex2f( 0, 0 );
+			glVertex2f( 1, 0 );
+			glVertex2f( 1, 1 );
+			glVertex2f( 0, 1 );
+
+		glEnd();
+
+		glDisable( GL_BLEND );
+
+		glDisable( GL_STENCIL_TEST );
+		
+		LeaveScreenSpace();
+		
+		#endif
+	}
+	
+protected:
+	
+	math::Vector InverseTransform( const math::Vector & input, const math::Vector & position, const math::Quaternion & orientation, float scale )
+	{
+		assert( scale >= 0.0f );
+		
+		math::Vector output = input - position;
+		output /= scale;
+		output = RotateVectorByQuaternion( output, orientation.inverse() );
+		
+		return output;
+	}
+	
+ 	math::Vector RotateVectorByQuaternion( const math::Vector & input, const math::Quaternion & q )
+	{
+		math::Quaternion q_inv = q.inverse();
+		math::Quaternion a( 0, input.x, input.y, input.z );
+		math::Quaternion r = ( q * a ) * q_inv;
+		return math::Vector( r.x, r.y, r.z );
+	}
+	
+	void EnterScreenSpace()
+	{
+	    glMatrixMode( GL_PROJECTION );
+	    glPushMatrix();
+	    glLoadIdentity();
+	    glOrtho( 0, 1, 0, 1, 1, -1 );
+
+	    glMatrixMode( GL_MODELVIEW );
+	    glPushMatrix();
+	    glLoadIdentity();
+	}
+	
+	void LeaveScreenSpace()
+	{
+	    glMatrixMode( GL_PROJECTION );
+	    glPopMatrix();
+
+	    glMatrixMode( GL_MODELVIEW );
+	    glPopMatrix();
+	}
+		
+	void PushTransform( const math::Vector & position, const math::Quaternion & orientation, float scale )
+	{
+		glPushMatrix();
+
+		glTranslatef( position.x, position.y, position.z ); 
+
+		const float pi = 3.1415926f;
+
+		float angle;
+		math::Vector axis;
+		GetAxisAngle( orientation, axis, angle );
+		glRotatef( angle / pi * 180, axis.x, axis.y, axis.z );
+
+		glScalef( scale, scale, scale );
+	}
+	
+	void PopTransform()
+	{
+		glPopMatrix();
+	}
+	
+	void GetAxisAngle( const math::Quaternion & quaternion, math::Vector & axis, float & angle ) const
+	{
+		const float w = quaternion.w;
+		const float x = quaternion.x;
+		const float y = quaternion.y;
+		const float z = quaternion.z;
+		
+		const float lengthSquared = x*x + y*y + z*z;
+		
+		if ( lengthSquared > 0.00001f )
+		{
+			angle = 2.0f * (float) acos( w );
+			const float inverseLength = 1.0f / (float) pow( lengthSquared, 0.5f );
+			axis.x = x * inverseLength;
+			axis.y = y * inverseLength;
+			axis.z = z * inverseLength;
+		}
+		else
+		{
+			angle = 0.0f;
+			axis.x = 1.0f;
+			axis.y = 0.0f;
+			axis.z = 0.0f;
+		}
+	}
+	
+private:
+	
+	int displayWidth;
+	int displayHeight;
+	
+	#ifdef CUBE_DISPLAY_LIST
+	int cubeDisplayList;
+	#endif
+
+	#ifdef FLOOR_AND_WALLS_DISPLAY_LIST
+	int floorAndWallsDisplayList;
+	#endif
+	
+	math::Vector lightPosition;
+	
+	struct CubeData
+	{
+		CubeData()
+		{
+			r = 1.0f;
+			g = 1.0f;
+			b = 1.0f;
+		}
+		
+		float r;
+		float g;
+		float b;
+	};
+	
+	CubeData cubeData[MaxCubes];
+};
+
+// ------------------------------------------------------------------------------
+
+const float DeltaTime = 1.0f / 60.0f;
+
 int main( int argc, char * argv[] )
 {
-	// ...
+	if ( !OpenDisplay( "Authority Management", DisplayWidth, DisplayHeight ) )
+	{
+		printf( "failed to open display\n" );
+		return 1;
+	}
+	
+	Renderer renderer( DisplayWidth, DisplayHeight );
+
+	PhysicsSimulation simulation;
+	
+	simulation.OnPlayerJoin( 0 );
+	simulation.OnPlayerJoin( 1 );
+	
+	while ( true )
+	{
+		simulation.Update( DeltaTime );
+
+		RenderState renderState;
+		simulation.GetRenderState( renderState );
+
+		renderer.ClearScreen();
+		renderer.Render( renderState, 0, 0, DisplayWidth, DisplayHeight );
+		renderer.RenderShadows( renderState, 0, 0, DisplayWidth, DisplayHeight );
+
+		UpdateDisplay( 1 );
+	}
+	
+	CloseDisplay();
 
 	return 0;
 }

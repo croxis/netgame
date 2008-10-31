@@ -1924,7 +1924,6 @@ namespace math
 	    void clip(Vector &point, float distance = 0.0f)
 	    {
 	        const float d = (point.dot(normal) - constant) - distance;
-
 	        if (d<0)
 	            point -= normal * d;
 	    }
