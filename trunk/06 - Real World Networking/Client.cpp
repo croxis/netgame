@@ -11,7 +11,6 @@
 
 #include "NetPlatform.h"
 #include "NetTransport.h"
-#include "lan/NetLAN.h"			// todo: move NetLAN.h interface into NetTransport.h?
 
 using namespace std;
 using namespace net;

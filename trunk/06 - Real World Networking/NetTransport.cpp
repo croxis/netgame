@@ -74,7 +74,9 @@ void net::Transport::Destroy( Transport * transport )
 #include <string>
 #include <vector>
 
+#ifdef DEBUG
 #define NET_UNIT_TEST
+#endif
 
 #include "lan/NetAddress.h"
 #include "lan/NetSockets.h"
@@ -307,8 +309,10 @@ net::TransportType net::TransportLAN::GetType() const
 }
 
 // -------------------------------------------------------------------------------
-
 // unit tests
+// -------------------------------------------------------------------------------
+
+#ifdef DEBUG
 
 using namespace std;
 using namespace net;
@@ -2453,8 +2457,12 @@ void test_mesh_nodes()
 	mesh.Stop();
 }
 
+#endif
+
 void TransportLAN::UnitTest()
 {
+	#ifdef DEBUG
+	
 	check( InitializeSockets() );
 	
 	test_connection_join();
@@ -2490,6 +2498,8 @@ void TransportLAN::UnitTest()
 
 	printf( "-----------------------------------------------------\n" );
 	printf( "passed!\n" );
+	
+	#endif
 }
 
 // -------------------------------------------------------------------------------
