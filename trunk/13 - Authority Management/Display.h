@@ -453,15 +453,15 @@ void UpdateDisplay( int interval = 0 )
 {
 	// update display
 	
-//	GLint swapInterval = interval;
-//	aglSetInteger( context, AGL_SWAP_INTERVAL, &swapInterval );
+	GLint swapInterval = interval;
+	aglSetInteger( context, AGL_SWAP_INTERVAL, &swapInterval );
 	aglSwapBuffers( context );
 
 	// process events
 	
 	EventRef event = 0; 
 	OSStatus status = ReceiveNextEvent( 0, NULL, 0.0f, kEventRemoveFromQueue, &event ); 
-	if ( status == noErr && event ) 
+	if ( status == noErr && event )
 	{ 
 		bool sendEvent = true;
 

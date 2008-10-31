@@ -23,8 +23,8 @@ using namespace net;
 
 // constants
 
-const int DisplayWidth = 800;
-const int DisplayHeight = 600;
+const int DisplayWidth = 640;
+const int DisplayHeight = 480;
 
 const float ShadowDistance = 10.0f;
 const float ColorChangeTightness = 0.1f;
@@ -53,6 +53,7 @@ const float ContactSurfaceLayer = 0.001f;
 #define USE_QUICK_STEP
 #define CUBE_DISPLAY_LIST
 #define FLOOR_AND_WALLS_DISPLAY_LIST
+#define MULTITHREADED
 //#define RENDER_SHADOWS
 //#define DEBUG_SHADOW_VOLUMES
 //#define CAMERA_FOLLOW
@@ -1661,6 +1662,108 @@ private:
 
 // ------------------------------------------------------------------------------
 
+// worker thread 
+
+#ifdef MULTITHREADED
+#include <pthread.h>
+#endif
+
+class WorkerThread
+{
+public:
+	
+	WorkerThread()
+	{
+		#ifdef MULTITHREADED
+		thread = 0;
+		#endif
+	}
+	
+	virtual ~WorkerThread()
+	{
+		#ifdef MULTITHREADED
+		thread = 0;
+		#endif
+	}
+	
+	bool Start()
+	{
+		#ifdef MULTITHREADED
+	
+			if ( pthread_create( &thread, NULL, StaticRun, (void*)this ) != 0 )
+			{
+				printf( "error: pthread_create failed\n" );
+				return false;
+			}
+		
+		#else
+		
+			Run();
+			
+		#endif
+		
+		return true;
+	}
+	
+	bool Join()
+	{
+		#ifdef MULTITHREADED
+		if ( pthread_join( thread, NULL ) != 0 )
+		{
+			printf( "error: pthread_join failed\n" );
+			return false;
+		}
+		#endif
+		return true;
+	}
+	
+protected:
+	
+	static void* StaticRun( void * data )
+	{
+		WorkerThread * self = (WorkerThread*) data;
+		self->Run();
+		return NULL;
+	}
+	
+	virtual void Run() = 0;			// note: override this to implement your thread task
+	
+private:
+
+	#ifdef MULTITHREADED	
+	pthread_t thread;
+	#endif
+};
+
+// simulation worker thread
+
+class SimulationWorkerThread : public WorkerThread
+{
+public:
+	
+	SimulationWorkerThread( PhysicsSimulation * simulation, float deltaTime )
+	{
+		assert( simulation );
+		this->simulation = simulation;
+		this->deltaTime = deltaTime;
+	}
+	
+protected:
+	
+	void Run()
+	{
+		assert( simulation );
+		simulation->Update( deltaTime );
+	}
+	
+private:
+
+	PhysicsSimulation * simulation;
+	float deltaTime;
+};
+
+// ------------------------------------------------------------------------------
+
 const float DeltaTime = 1.0f / 60.0f;
 
 int main( int argc, char * argv[] )
@@ -1680,6 +1783,18 @@ int main( int argc, char * argv[] )
 	
 	while ( true )
 	{
+		RenderState renderState;
+		simulation.GetRenderState( renderState );
+
+		SimulationWorkerThread workerThread( &simulation, DeltaTime );
+		workerThread.Start();
+
+		renderer.ClearScreen();
+		renderer.Render( renderState, 0, 0, DisplayWidth, DisplayHeight );
+		renderer.RenderShadows( renderState, 0, 0, DisplayWidth, DisplayHeight );
+
+		UpdateDisplay( 1 );
+
 		Input input = Input::Sample();
 		
 		if ( input.escape )
@@ -1690,18 +1805,10 @@ int main( int argc, char * argv[] )
 		playerInput.right = input.right;
 		playerInput.forward = input.up;
 		playerInput.back = input.down;
+
+		workerThread.Join();
+
 		simulation.SetPlayerInput( 0, playerInput );
-		
-		simulation.Update( DeltaTime );
-
-		RenderState renderState;
-		simulation.GetRenderState( renderState );
-
-		renderer.ClearScreen();
-		renderer.Render( renderState, 0, 0, DisplayWidth, DisplayHeight );
-		renderer.RenderShadows( renderState, 0, 0, DisplayWidth, DisplayHeight );
-
-		UpdateDisplay( 1 );
 	}
 	
 	CloseDisplay();
