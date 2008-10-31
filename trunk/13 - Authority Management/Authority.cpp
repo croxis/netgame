@@ -209,7 +209,11 @@ public:
 		dWorldSetContactMaxCorrectingVel( world, MaximumCorrectingVelocity );
 		dWorldSetLinearDamping( world, 0.001f );
 		dWorldSetAngularDamping( world, 0.001f );
-
+		dWorldSetAutoDisableFlag( world, true );
+		dWorldSetAutoDisableLinearThreshold( world, 0.5f );
+		dWorldSetAutoDisableAngularThreshold( world, 0.5f );
+		dWorldSetAutoDisableTime( world, 0.1f );
+		
 		// add boundary planes
 		
 		dCreatePlane( space, 0, 1, 0, 0 );						// floor

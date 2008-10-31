@@ -2,8 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>currentDocument</key>
-	<string>Authority.cpp</string>
 	<key>documents</key>
 	<array>
 		<dict>
@@ -18,145 +16,51 @@
 			<key>filename</key>
 			<string>makefile</string>
 			<key>lastUsed</key>
-			<date>2008-10-31T00:25:57Z</date>
+			<date>2008-10-31T02:44:09Z</date>
 		</dict>
 		<dict>
 			<key>filename</key>
 			<string>Display.h</string>
 			<key>lastUsed</key>
-			<date>2008-10-31T01:05:56Z</date>
+			<date>2008-10-31T02:44:10Z</date>
 		</dict>
 		<dict>
 			<key>filename</key>
 			<string>Platform.h</string>
 			<key>lastUsed</key>
-			<date>2008-10-31T00:56:34Z</date>
+			<date>2008-10-31T02:44:09Z</date>
 		</dict>
 		<dict>
 			<key>filename</key>
 			<string>Mathematics.h</string>
 			<key>lastUsed</key>
-			<date>2008-10-30T23:40:12Z</date>
-		</dict>
-		<dict>
-			<key>filename</key>
-			<string>NetStream.h</string>
-			<key>lastUsed</key>
-			<date>2008-10-31T00:10:04Z</date>
-		</dict>
-		<dict>
-			<key>filename</key>
-			<string>Authority.cpp</string>
-			<key>lastUsed</key>
-			<date>2008-10-31T01:05:56Z</date>
+			<date>2008-10-31T02:44:10Z</date>
 			<key>selected</key>
 			<true/>
 		</dict>
 		<dict>
 			<key>filename</key>
+			<string>NetStream.h</string>
+			<key>lastUsed</key>
+			<date>2008-10-31T02:44:10Z</date>
+		</dict>
+		<dict>
+			<key>filename</key>
+			<string>Authority.cpp</string>
+			<key>lastUsed</key>
+			<date>2008-10-31T02:44:09Z</date>
+		</dict>
+		<dict>
+			<key>filename</key>
 			<string>old.cpp</string>
 			<key>lastUsed</key>
-			<date>2008-10-31T01:01:11Z</date>
+			<date>2008-10-31T02:44:09Z</date>
 		</dict>
 	</array>
 	<key>fileHierarchyDrawerWidth</key>
 	<integer>142</integer>
 	<key>metaData</key>
-	<dict>
-		<key>Authority.cpp</key>
-		<dict>
-			<key>caret</key>
-			<dict>
-				<key>column</key>
-				<integer>18</integer>
-				<key>line</key>
-				<integer>1705</integer>
-			</dict>
-			<key>firstVisibleColumn</key>
-			<integer>0</integer>
-			<key>firstVisibleLine</key>
-			<integer>1672</integer>
-		</dict>
-		<key>Display.h</key>
-		<dict>
-			<key>caret</key>
-			<dict>
-				<key>column</key>
-				<integer>0</integer>
-				<key>line</key>
-				<integer>498</integer>
-			</dict>
-			<key>firstVisibleColumn</key>
-			<integer>0</integer>
-			<key>firstVisibleLine</key>
-			<integer>479</integer>
-		</dict>
-		<key>NetStream.h</key>
-		<dict>
-			<key>caret</key>
-			<dict>
-				<key>column</key>
-				<integer>0</integer>
-				<key>line</key>
-				<integer>307</integer>
-			</dict>
-			<key>firstVisibleColumn</key>
-			<integer>0</integer>
-			<key>firstVisibleLine</key>
-			<integer>287</integer>
-		</dict>
-		<key>Platform.h</key>
-		<dict>
-			<key>caret</key>
-			<dict>
-				<key>column</key>
-				<integer>0</integer>
-				<key>line</key>
-				<integer>86</integer>
-			</dict>
-			<key>firstVisibleColumn</key>
-			<integer>0</integer>
-			<key>firstVisibleLine</key>
-			<integer>8</integer>
-		</dict>
-		<key>makefile</key>
-		<dict>
-			<key>caret</key>
-			<dict>
-				<key>column</key>
-				<integer>1</integer>
-				<key>line</key>
-				<integer>3</integer>
-			</dict>
-			<key>firstVisibleColumn</key>
-			<integer>0</integer>
-			<key>firstVisibleLine</key>
-			<integer>0</integer>
-		</dict>
-		<key>old.cpp</key>
-		<dict>
-			<key>caret</key>
-			<dict>
-				<key>column</key>
-				<integer>0</integer>
-				<key>line</key>
-				<integer>1810</integer>
-			</dict>
-			<key>firstVisibleColumn</key>
-			<integer>0</integer>
-			<key>firstVisibleLine</key>
-			<integer>1791</integer>
-		</dict>
-	</dict>
-	<key>openDocuments</key>
-	<array>
-		<string>old.cpp</string>
-		<string>Authority.cpp</string>
-		<string>makefile</string>
-		<string>Platform.h</string>
-		<string>Display.h</string>
-		<string>NetStream.h</string>
-	</array>
+	<dict/>
 	<key>showFileHierarchyDrawer</key>
 	<true/>
 	<key>windowFrame</key>
