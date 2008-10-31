@@ -2,7 +2,7 @@
 
 flags = -Wall -DDEBUG # -O3
 
-% : %.cpp NetPlatform.h NetReliability.h NetFlowControl.h NetTransport.h lan/NetAddress.h lan/NetSockets.h lan/NetBeacon.h lan/NetConnection.h lan/NetLAN.h lan/NetNodeMesh.h
+% : %.cpp NetPlatform.h NetReliability.h NetFlowControl.h NetTransport.h lan/NetAddress.h lan/NetSockets.h lan/NetBeacon.h lan/NetConnection.h lan/NetNodeMesh.h
 	g++ $< -o $@ NetTransport.cpp lan/NetLAN.cpp ${flags}
 
 all : Client Server Test
