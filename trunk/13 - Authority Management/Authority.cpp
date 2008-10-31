@@ -54,8 +54,8 @@ const float ContactSurfaceLayer = 0.001f;
 #define CUBE_DISPLAY_LIST
 #define FLOOR_AND_WALLS_DISPLAY_LIST
 #define MULTITHREADED
-//#define VSYNC
-//#define RENDER_SHADOWS
+#define VSYNC
+#define RENDER_SHADOWS
 //#define DEBUG_SHADOW_VOLUMES
 //#define CAMERA_FOLLOW
 
@@ -207,6 +207,8 @@ public:
 		dWorldSetGravity( world, 0, -Gravity, 0 );
 		dWorldSetContactSurfaceLayer( world, ContactSurfaceLayer );
 		dWorldSetContactMaxCorrectingVel( world, MaximumCorrectingVelocity );
+		dWorldSetLinearDamping( world, 0.001f );
+		dWorldSetAngularDamping( world, 0.001f );
 
 		// add boundary planes
 		
