@@ -42,14 +42,14 @@ int main( int argc, char * argv[] )
 		case Transport_LAN:
 		{
 			TransportLAN * lan_transport = dynamic_cast<TransportLAN*>( transport );
-			char server[64+1] = "127.0.0.1:30000";
-//			TransportLAN::GetHostName( server, sizeof(server) );
-			if ( argc == 2 )
+			if ( argc >= 2 )
+				lan_transport->ConnectClient( argv[1] );
+			else
 			{
-				strncpy( server, argv[1], sizeof(server) );
-				server[64] = '\0';
+				char hostname[64+1];
+				TransportLAN::GetHostName( hostname, sizeof(hostname) );
+				lan_transport->ConnectClient( hostname );
 			}
-			lan_transport->ConnectClient( server );
 		}
 		break;
 		

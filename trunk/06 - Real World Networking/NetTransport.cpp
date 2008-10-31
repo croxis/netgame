@@ -111,6 +111,7 @@ net::TransportLAN::TransportLAN()
 	beacon = NULL;
 	listener = NULL;
 	beaconAccumulator = 1.0f;
+	connectingByName = false;
 }
 
 net::TransportLAN::~TransportLAN()
@@ -136,7 +137,7 @@ bool net::TransportLAN::StartServer( const char name[] )
 	assert( !beacon );
 	assert( !listener );
 	printf( "lan transport: start server\n" );
-	beacon = new Beacon( name, config.protocolId, config.listenerPort, config.serverPort );
+	beacon = new Beacon( name, config.protocolId, config.listenerPort, config.meshPort );
 	if ( !beacon->Start( config.beaconPort ) )
 	{
 		printf( "failed to start beacon on port %d\n", config.beaconPort );
@@ -202,7 +203,7 @@ bool net::TransportLAN::ConnectClient( const char server[] )
 	// no, connect by hostname
 	else
 	{
-		printf( "lan transport: client connect to hostname: %s\n", server );
+		printf( "lan transport: client connect by name \"%s\"\n", server );
 		listener = new Listener( config.protocolId, config.timeout );
 		if ( !listener->Start( config.listenerPort ) )
 		{
@@ -210,7 +211,10 @@ bool net::TransportLAN::ConnectClient( const char server[] )
 			Stop();
 			return false;
 		}
-		// todo: implement search for server via lan lobby (update) + timeout search
+		connectingByName = true;
+		strncpy( connectName, server, sizeof(connectName) - 1 );
+		connectName[ sizeof(connectName) - 1 ] = '\0';
+		connectAccumulator = 0.0f;
 	}
 	return true;
 }
@@ -270,6 +274,7 @@ void net::TransportLAN::Stop()
 		delete listener;
 		listener = NULL;
 	}
+	connectingByName = false;
 }
 
 // implement transport interface
@@ -313,6 +318,37 @@ class net::ReliabilitySystem & net::TransportLAN::GetReliability( int nodeId )
 
 void net::TransportLAN::Update( float deltaTime )
 {
+	if ( connectingByName )
+	{
+		assert( listener );
+		const int entryCount = listener->GetEntryCount();
+		for ( int i = 0; i < entryCount; ++i )
+		{
+			const ListenerEntry & entry = listener->GetEntry( i );
+			if ( strcmp( entry.name, connectName ) == 0 )
+			{
+				printf( "lan transport: found server %d.%d.%d.%d:%d\n", 
+					entry.address.GetA(),
+					entry.address.GetB(),
+					entry.address.GetC(),
+					entry.address.GetD(),
+					entry.address.GetPort() );
+				node = new Node( config.protocolId, config.meshSendRate, config.timeout );
+			 	if ( !node->Start( config.clientPort ) )
+				{
+					printf( "failed to start node on port %d\n", config.serverPort );
+					Stop();
+					return;		// todo: indicate error
+				}
+				node->Join( entry.address );
+				delete listener;
+				listener = NULL;
+				connectingByName = false;
+			}
+		}
+		connectAccumulator += deltaTime;
+		// todo: indicate error if accumulator exceeds timeout
+	}
 	if ( mesh )
 		mesh->Update( deltaTime );
 	if ( node )
@@ -340,7 +376,7 @@ net::TransportType net::TransportLAN::GetType() const
 }
 
 // -------------------------------------------------------------------------------
-// unit tests
+// unit tests for transport layer
 // -------------------------------------------------------------------------------
 
 #ifdef DEBUG

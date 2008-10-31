@@ -158,6 +158,10 @@ namespace net
 		class Beacon * beacon;
 		class Listener * listener;
 		float beaconAccumulator;
+
+		bool connectingByName;
+		char connectName[65];
+		float connectAccumulator;
 	};
 }
 
