@@ -1781,10 +1781,14 @@ int main( int argc, char * argv[] )
 	
 	Renderer renderer( DisplayWidth, DisplayHeight );
 
-	PhysicsSimulation simulation;
+	PhysicsSimulation clientSimulation;
+	PhysicsSimulation serverSimulation;
 	
-	simulation.OnPlayerJoin( 0 );
-	simulation.OnPlayerJoin( 1 );
+	clientSimulation.OnPlayerJoin( 0 );
+	clientSimulation.OnPlayerJoin( 1 );
+
+	serverSimulation.OnPlayerJoin( 0 );
+	serverSimulation.OnPlayerJoin( 1 );
 	
 	Timer timer;
 	
@@ -1801,10 +1805,12 @@ int main( int argc, char * argv[] )
 		#endif
 		
 		RenderState renderState;
-		simulation.GetRenderState( renderState );
+		serverSimulation.GetRenderState( renderState );
 
-		SimulationWorkerThread workerThread( &simulation, deltaTime );
-		workerThread.Start();
+		SimulationWorkerThread clientThread( &clientSimulation, deltaTime );
+		SimulationWorkerThread serverThread( &serverSimulation, deltaTime );
+		clientThread.Start();
+		serverThread.Start();
 
 		renderer.ClearScreen();
 		renderer.Render( renderState, 0, 0, DisplayWidth, DisplayHeight );
@@ -1827,9 +1833,10 @@ int main( int argc, char * argv[] )
 		playerInput.forward = input.up;
 		playerInput.back = input.down;
 
-		workerThread.Join();
+		serverThread.Join();
+		clientThread.Join();
 
-		simulation.SetPlayerInput( 0, playerInput );
+		serverSimulation.SetPlayerInput( 0, playerInput );
 	}
 	
 	CloseDisplay();
