@@ -108,7 +108,7 @@ int main( int argc, char * argv[] )
 			packet.ReadFloat( origin.y );
 			packet.ReadFloat( origin.z );
 
-			unsigned int updateCount;
+			unsigned int updateCount = 0;
 			packet.ReadInteger( updateCount );
 			
 			if ( updateCount > (unsigned int) MaxCubes )
@@ -129,7 +129,7 @@ int main( int argc, char * argv[] )
 				packet.ReadFloat( updates[i].orientation.z );
 				packet.ReadFloat( updates[i].scale );
 				
-				bool pendingHibernation;
+				bool pendingHibernation = false;
 				packet.ReadBoolean( pendingHibernation );
 				updates[i].visible = !pendingHibernation;
 				

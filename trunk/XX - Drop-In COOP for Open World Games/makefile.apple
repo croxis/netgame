@@ -9,7 +9,7 @@ examples := $(patsubst %.cpp,%,$(wildcard *.cpp))
 libs := -Lode -lode -lruby
 frameworks := -framework Carbon -framework OpenGL -framework AGL
 
-all : ${examples} sandbox client_app
+all : ${examples} sandbox Client.app
 
 % : %.cpp makefile ${headers}
 	g++ $< -o $@ ${flags} ${libs} ${frameworks}

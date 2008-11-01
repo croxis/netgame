@@ -364,9 +364,11 @@ def test_game
       object.update deltaTime
     end
         
-    # advance time wait for frame
+    # wait for frame
+ 
+ # todo: need to implement wait for frame again!
         
-    Platform::waitForFrame deltaTime
+#    Platform::waitForFrame deltaTime
     
     time += deltaTime
 
