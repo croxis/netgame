@@ -118,6 +118,10 @@ namespace net
 		
 		bool ConnectClient( const char server[] );
 
+		bool IsConnected() const;
+		
+		bool ConnectFailed() const;
+
 		bool EnterLobby();
 		
 		int GetLobbyEntryCount();
@@ -162,6 +166,7 @@ namespace net
 		bool connectingByName;
 		char connectName[65];
 		float connectAccumulator;
+		bool connectFailed;
 	};
 }
 

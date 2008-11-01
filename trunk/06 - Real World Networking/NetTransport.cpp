@@ -112,6 +112,7 @@ net::TransportLAN::TransportLAN()
 	listener = NULL;
 	beaconAccumulator = 1.0f;
 	connectingByName = false;
+	connectFailed = false;
 }
 
 net::TransportLAN::~TransportLAN()
@@ -215,8 +216,19 @@ bool net::TransportLAN::ConnectClient( const char server[] )
 		strncpy( connectName, server, sizeof(connectName) - 1 );
 		connectName[ sizeof(connectName) - 1 ] = '\0';
 		connectAccumulator = 0.0f;
+		connectFailed = false;
 	}
 	return true;
+}
+
+bool net::TransportLAN::IsConnected() const
+{
+	return node && node->IsConnected();
+}
+
+bool net::TransportLAN::ConnectFailed() const
+{
+	return node && node->JoinFailed() || connectingByName && connectFailed;
 }
 
 bool net::TransportLAN::EnterLobby()
@@ -275,6 +287,7 @@ void net::TransportLAN::Stop()
 		listener = NULL;
 	}
 	connectingByName = false;
+	connectFailed = false;
 }
 
 // implement transport interface
@@ -318,7 +331,7 @@ class net::ReliabilitySystem & net::TransportLAN::GetReliability( int nodeId )
 
 void net::TransportLAN::Update( float deltaTime )
 {
-	if ( connectingByName )
+	if ( connectingByName && !connectFailed )
 	{
 		assert( listener );
 		const int entryCount = listener->GetEntryCount();
@@ -338,7 +351,8 @@ void net::TransportLAN::Update( float deltaTime )
 				{
 					printf( "failed to start node on port %d\n", config.serverPort );
 					Stop();
-					return;		// todo: indicate error
+					connectFailed = true;
+					return;
 				}
 				node->Join( entry.address );
 				delete listener;
@@ -346,8 +360,12 @@ void net::TransportLAN::Update( float deltaTime )
 				connectingByName = false;
 			}
 		}
-		connectAccumulator += deltaTime;
-		// todo: indicate error if accumulator exceeds timeout
+		if ( connectingByName )
+		{
+			connectAccumulator += deltaTime;
+			if ( connectAccumulator > config.timeout )
+				connectFailed = true;
+		}
 	}
 	if ( mesh )
 		mesh->Update( deltaTime );

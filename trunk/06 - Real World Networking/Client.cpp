@@ -61,9 +61,29 @@ int main( int argc, char * argv[] )
 
 	const float DeltaTime = 1.0f / 30.0f;
 
+	bool connected = false;
+
 	while ( true )
 	{
+		if ( type == Transport_LAN )
+		{
+			TransportLAN * lan_transport = dynamic_cast<TransportLAN*>( transport );
+			if ( !connected && lan_transport->IsConnected() )
+				connected = true;
+			if ( connected && !lan_transport->IsConnected() )
+			{
+				printf( "disconnected\n" );
+				break;
+			}
+			if ( lan_transport->ConnectFailed() )
+			{
+				printf( "connect failed\n" );
+				break;
+			}
+		}
+
 		transport->Update( DeltaTime );
+		
 		wait_seconds( DeltaTime );
 	}
 	
