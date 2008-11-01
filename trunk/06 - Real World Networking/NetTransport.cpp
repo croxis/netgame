@@ -2579,6 +2579,16 @@ void TransportLAN::UnitTest()
 	test_mesh_restart();
 	test_mesh_nodes();
 
+	/*
+	test_lan_transport_connect();
+	test_lan_transport_connect_fail();
+	test_lan_transport_connect_busy();
+	test_lan_transport_reconnect();
+	test_lan_transport_client_server();
+	test_lan_transport_peer_to_peer();
+	test_lan_transport_reliability();
+	*/
+
 	ShutdownSockets();
 
 	printf( "-----------------------------------------------------\n" );
