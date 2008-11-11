@@ -29,9 +29,11 @@ const int DisplayHeight = 480;
 const float ShadowDistance = 10.0f;
 const float ColorChangeTightness = 0.1f;
 
-const float AuthorityTimeout = 1.0f;
-const float AuthorityLinearRestThreshold = 0.1f;
-const float AuthorityAngularRestThreshold = 0.1f;
+const float RestTime = 1.0f;
+const float LinearRestThreshold = 0.01f;
+const float AngularRestThreshold = 0.01f;
+
+const float AuthorityTimeOut = 1.0f;
 
 const int MaxCubes = 64;
 const int MaxPlayers = 2;
@@ -209,10 +211,7 @@ public:
 		dWorldSetContactMaxCorrectingVel( world, MaximumCorrectingVelocity );
 		dWorldSetLinearDamping( world, 0.001f );
 		dWorldSetAngularDamping( world, 0.001f );
-		dWorldSetAutoDisableFlag( world, true );
-		dWorldSetAutoDisableLinearThreshold( world, 0.5f );
-		dWorldSetAutoDisableAngularThreshold( world, 0.5f );
-		dWorldSetAutoDisableTime( world, 0.1f );
+		dWorldSetAutoDisableFlag( world, false );
 		
 		// add boundary planes
 		
@@ -700,12 +699,14 @@ protected:
 struct AuthorityData
 {
 	int authority;							// authority id. -1 = default authority, 0 is server player, 1 is client player
-	float timeAtRest;						// time at rest. we revert to default authority if at rest longer than authority timeout
+	float timeAtRest;						// time at rest. disable body if at rest for ~1 second or so
+	float authorityTimeOut;					// we revert to default authority if timeout exceeds some value like 2 seconds
 	
 	AuthorityData()
 	{
 		authority = -1;
 		timeAtRest = 0;
+		authorityTimeOut = 0;
 	}
 };
 
@@ -730,7 +731,7 @@ public:
 		this->simulationState = simulationState;
 	}
 	
-	void Update( int localAuthorityId, bool authorityByDefault )
+	void Update( float deltaTime, int localAuthorityId, bool authorityByDefault )
 	{
 		if ( localAuthorityId == -1 )
 			return;
@@ -741,7 +742,7 @@ public:
 		this->localAuthorityId = localAuthorityId;
 		this->authorityByDefault = authorityByDefault;
 
-		// detect local authority changes for non-player controlled cubes
+		// detect local authority changes
 
 		authorityState.numCubes = simulationState.numCubes;
 
@@ -749,34 +750,43 @@ public:
 		{
 			for ( int j = 0; j < MaxPlayers; ++j )
 			{
-				if ( simulationState.playerInteractions[j].interacting[i] && 
-					 ( j == 0 || authorityState.cubeAuthority[i].authority == -1 ) )
+				if ( simulationState.playerInteractions[j].interacting[i] && authorityState.cubeAuthority[i].authority == -1 )
 				{
 					authorityState.cubeAuthority[i].authority = j;
+					authorityState.cubeAuthority[i].authorityTimeOut = 0.0f;
 					break;
 				}
 			}
 		}
-
-		// revert to no authority after timeout at rest
 		
+		// detect simulation bodies at rest
+
 		for ( int i = 0; i < authorityState.numCubes; ++i )
 		{
 			const float linearSpeed = simulationState.cubeState[i].linearVelocity.length();
 			const float angularSpeed = simulationState.cubeState[i].angularVelocity.length();
-			
-			const bool resting = linearSpeed < AuthorityLinearRestThreshold && angularSpeed < AuthorityAngularRestThreshold;
-			
+
+			const bool resting = linearSpeed < LinearRestThreshold && angularSpeed < AngularRestThreshold;
+
 			if ( resting )
-				authorityState.cubeAuthority[i].timeAtRest += 1.0f;
+				authorityState.cubeAuthority[i].timeAtRest += deltaTime;
 			else
 				authorityState.cubeAuthority[i].timeAtRest = 0.0f;
 
-			if ( authorityState.cubeAuthority[i].timeAtRest > AuthorityTimeout )
-			{
+//			simulationState.cubeState[i].enabled = authorityState.cubeAuthority[i].timeAtRest > RestTime;
+		}
+
+		// update authority timeout
+
+		for ( int i = 0; i < authorityState.numCubes; ++i )
+		{
+			if ( !simulationState.cubeState[i].enabled )
+				authorityState.cubeAuthority[i].authorityTimeOut += deltaTime;
+			else
+				authorityState.cubeAuthority[i].authorityTimeOut = 0.0f;
+
+			if ( authorityState.cubeAuthority[i].authorityTimeOut > AuthorityTimeOut )
 				authorityState.cubeAuthority[i].authority = -1;
-				authorityState.cubeAuthority[i].timeAtRest = 0.0f;
-			}
 		}
 		
 		// force authority for player controlled cubes
@@ -852,9 +862,9 @@ public:
 		simulationState = this->simulationState;
 	}
 	
-	void GetAuthorityState( AuthorityState & authorityState )
+	const AuthorityState & GetAuthorityState()
 	{
-		authorityState = this->authorityState;
+		return this->authorityState;
 	}
 	
 private:
@@ -863,101 +873,6 @@ private:
 	bool authorityByDefault;					// true if we have authority by default (server)
 	SimulationState simulationState;			// the simulation state we are managing
 	AuthorityState authorityState;				// authority state for each cube
-};
-
-// ------------------------------------------------------------------------------
-
-// abstract network state (decouple sim and networking)
-
-struct NetworkPlayerInput
-{
-	NetworkPlayerInput()
-	{
-		left = false;
-		right = false;
-		forward = false;
-		back = false;
-	}
-	
-	bool left;
-	bool right;
-	bool forward;
-	bool back;
-	
-	bool Serialize( Stream & stream, int playerId )
-	{
-		stream.SerializeBoolean( left );
-		stream.SerializeBoolean( right );
-		stream.SerializeBoolean( forward );
-		stream.SerializeBoolean( back );
-		return true;
-	}
-};
-
-struct NetworkPlayerState
-{
-	unsigned int cubeId;
-
-	bool Serialize( Stream & stream, int playerId )
-	{
-		stream.SerializeInteger( cubeId, 0, MaxCubes - 1 );
-		return true;
-	}
-};
-
-struct NetworkCubeState
-{
-	bool enabled;
-	bool authority;
-	math::Vector position;
-	math::Vector linearVelocity;
-	math::Vector angularVelocity;
-	math::Quaternion orientation;
-
-	NetworkCubeState()
-	{
-		enabled = false;
-		authority = false;
-		position = math::Vector(0,0,0);
-		linearVelocity = math::Vector(0,0,0);
-		angularVelocity = math::Vector(0,0,0);
-		orientation = math::Quaternion(1,0,0,0);
-	}
-
-	bool Serialize( Stream & stream )
-	{
-		stream.SerializeBoolean( enabled );
-		stream.SerializeBoolean( authority );
-		//stream.SerializeVector( position );
-		//stream.SerializeQuaternion( orientation );
-
-		// todo: add vector and quaternion serialize methods, ideally compressed vector and quaternion
-
-		if ( enabled )
-		{
-//			stream.SerializeVector( linearVelocity );
-//			stream.SerializeVector( angularVelocity );
-		}
-
-		return true;
-	}
-};
-
-struct NetworkPlayerObjects
-{
-	unsigned int numCubes;
-	NetworkCubeState cubes[MaxCubes];
-
-	bool Serialize( Stream & stream, int playerId )
-	{
-		stream.SerializeInteger( numCubes, 0, MaxCubes );
-		for ( unsigned int i = 0 ; i < numCubes; ++i )
-		{
-			if ( !cubes[i].Serialize( stream ) )
-				return false;
-		}
-		return true;
-	}
 };
 
 // ------------------------------------------------------------------------------
@@ -1781,6 +1696,8 @@ int main( int argc, char * argv[] )
 	
 	Renderer renderer( DisplayWidth, DisplayHeight );
 
+	AuthorityManagement authorityManagement;
+
 	PhysicsSimulation clientSimulation;
 	PhysicsSimulation serverSimulation;
 	
@@ -1807,6 +1724,30 @@ int main( int argc, char * argv[] )
 		RenderState renderState;
 		serverSimulation.GetRenderState( renderState );
 
+		const AuthorityState & authorityState = authorityManagement.GetAuthorityState();
+	
+		for ( int i = 0; i < authorityState.numCubes; ++i )
+		{
+			if ( authorityState.cubeAuthority[i].authority == 0 )
+			{
+				renderState.cubes[i].r = 1.0f;
+				renderState.cubes[i].g = 0.0f;
+				renderState.cubes[i].b = 0.0f;
+			}
+			else if ( authorityState.cubeAuthority[i].authority == 1 )
+			{
+				renderState.cubes[i].r = 0.0f;
+				renderState.cubes[i].g = 0.0f;
+				renderState.cubes[i].b = 1.0f;
+			}
+			else
+			{
+				renderState.cubes[i].r = 1.0f;
+				renderState.cubes[i].g = 1.0f;
+				renderState.cubes[i].b = 1.0f;
+			}
+		}
+
 		SimulationWorkerThread clientThread( &clientSimulation, deltaTime );
 		SimulationWorkerThread serverThread( &serverSimulation, deltaTime );
 		clientThread.Start();
@@ -1827,16 +1768,30 @@ int main( int argc, char * argv[] )
 		if ( input.escape )
 			break;
 
-		SimulationPlayerInput playerInput;
-		playerInput.left = input.left;
-		playerInput.right = input.right;
-		playerInput.forward = input.up;
-		playerInput.back = input.down;
+		SimulationPlayerInput serverInput;
+		serverInput.left = input.left;
+		serverInput.right = input.right;
+		serverInput.forward = input.up;
+		serverInput.back = input.down;
+
+		SimulationPlayerInput clientInput;
+		clientInput.left = input.a;
+		clientInput.right = input.d;
+		clientInput.forward = input.w;
+		clientInput.back = input.s;
 
 		serverThread.Join();
 		clientThread.Join();
 
-		serverSimulation.SetPlayerInput( 0, playerInput );
+		serverSimulation.SetPlayerInput( 0, serverInput );
+		serverSimulation.SetPlayerInput( 1, clientInput );
+
+		SimulationState simulationState;
+		serverSimulation.GetSimulationState( simulationState );
+		authorityManagement.SetSimulationState( simulationState );
+		authorityManagement.Update( deltaTime, 0, true );
+		authorityManagement.GetSimulationState( simulationState );
+		serverSimulation.SetSimulationState( simulationState );
 	}
 	
 	CloseDisplay();

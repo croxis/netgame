@@ -18,25 +18,19 @@
 			<key>filename</key>
 			<string>makefile.apple</string>
 			<key>lastUsed</key>
-			<date>2008-08-02T19:06:47Z</date>
+			<date>2008-11-01T01:43:58Z</date>
 		</dict>
 		<dict>
 			<key>filename</key>
 			<string>makefile.linux</string>
 			<key>lastUsed</key>
-			<date>2008-07-28T22:31:29Z</date>
+			<date>2008-11-01T01:31:11Z</date>
 		</dict>
 		<dict>
 			<key>filename</key>
 			<string>Net.h</string>
 			<key>lastUsed</key>
-			<date>2008-10-31T02:30:14Z</date>
-		</dict>
-		<dict>
-			<key>filename</key>
-			<string>Platform.h</string>
-			<key>lastUsed</key>
-			<date>2008-10-31T02:30:17Z</date>
+			<date>2008-11-01T01:32:42Z</date>
 		</dict>
 		<dict>
 			<key>filename</key>
@@ -48,61 +42,43 @@
 			<key>filename</key>
 			<string>Simulation.h</string>
 			<key>lastUsed</key>
-			<date>2008-07-31T18:22:20Z</date>
+			<date>2008-11-01T01:30:53Z</date>
 		</dict>
 		<dict>
 			<key>filename</key>
 			<string>RubyNative.h</string>
 			<key>lastUsed</key>
-			<date>2008-07-30T03:00:21Z</date>
+			<date>2008-11-01T01:30:54Z</date>
 		</dict>
 		<dict>
 			<key>filename</key>
 			<string>Render.h</string>
 			<key>lastUsed</key>
-			<date>2008-08-03T19:26:36Z</date>
+			<date>2008-11-01T01:30:54Z</date>
 		</dict>
 		<dict>
 			<key>filename</key>
 			<string>Common.h</string>
 			<key>lastUsed</key>
-			<date>2008-08-03T19:26:37Z</date>
+			<date>2008-11-01T01:30:53Z</date>
 		</dict>
 		<dict>
 			<key>filename</key>
 			<string>GameObject.h</string>
 			<key>lastUsed</key>
-			<date>2008-08-03T19:26:37Z</date>
+			<date>2008-11-01T01:30:54Z</date>
 		</dict>
 		<dict>
 			<key>filename</key>
 			<string>Client.cpp</string>
 			<key>lastUsed</key>
-			<date>2008-08-03T19:26:37Z</date>
-		</dict>
-		<dict>
-			<key>filename</key>
-			<string>Server.cpp</string>
-			<key>lastUsed</key>
-			<date>2008-07-31T18:22:18Z</date>
-		</dict>
-		<dict>
-			<key>filename</key>
-			<string>FlowControl.cpp</string>
-			<key>lastUsed</key>
-			<date>2008-08-07T18:11:24Z</date>
+			<date>2008-11-01T01:43:33Z</date>
 		</dict>
 		<dict>
 			<key>filename</key>
 			<string>Sandbox.cpp</string>
 			<key>lastUsed</key>
-			<date>2008-07-31T18:22:20Z</date>
-		</dict>
-		<dict>
-			<key>filename</key>
-			<string>Interview.cpp</string>
-			<key>lastUsed</key>
-			<date>2008-08-14T17:36:55Z</date>
+			<date>2008-11-01T01:34:30Z</date>
 		</dict>
 		<dict>
 			<key>filename</key>
@@ -114,7 +90,7 @@
 			<key>filename</key>
 			<string>Scene.rb</string>
 			<key>lastUsed</key>
-			<date>2008-08-03T19:26:38Z</date>
+			<date>2008-11-01T01:30:53Z</date>
 		</dict>
 		<dict>
 			<key>filename</key>
@@ -138,7 +114,7 @@
 			<key>filename</key>
 			<string>Game.rb</string>
 			<key>lastUsed</key>
-			<date>2008-10-31T02:30:21Z</date>
+			<date>2008-11-01T01:43:58Z</date>
 			<key>selected</key>
 			<true/>
 		</dict>
@@ -156,55 +132,112 @@
 		</dict>
 		<dict>
 			<key>filename</key>
-			<string>FlowControl.rb</string>
-			<key>lastUsed</key>
-			<date>2008-08-03T19:26:48Z</date>
-		</dict>
-		<dict>
-			<key>filename</key>
 			<string>scene.xml</string>
 			<key>lastUsed</key>
-			<date>2008-07-26T22:47:03Z</date>
-		</dict>
-		<dict>
-			<key>filename</key>
-			<string>export.xml</string>
-			<key>lastUsed</key>
-			<date>2008-07-22T07:18:30Z</date>
-		</dict>
-		<dict>
-			<key>filename</key>
-			<string>game.xml</string>
-			<key>lastUsed</key>
-			<date>2008-08-13T21:41:58Z</date>
+			<date>2008-11-01T01:30:53Z</date>
 		</dict>
 	</array>
 	<key>fileHierarchyDrawerWidth</key>
 	<integer>200</integer>
 	<key>metaData</key>
 	<dict>
+		<key>Client.cpp</key>
+		<dict>
+			<key>caret</key>
+			<dict>
+				<key>column</key>
+				<integer>32</integer>
+				<key>line</key>
+				<integer>110</integer>
+			</dict>
+			<key>firstVisibleColumn</key>
+			<integer>0</integer>
+			<key>firstVisibleLine</key>
+			<integer>90</integer>
+		</dict>
 		<key>Game.rb</key>
 		<dict>
 			<key>caret</key>
 			<dict>
 				<key>column</key>
-				<integer>17</integer>
+				<integer>15</integer>
 				<key>line</key>
-				<integer>61</integer>
+				<integer>354</integer>
 			</dict>
 			<key>firstVisibleColumn</key>
 			<integer>0</integer>
 			<key>firstVisibleLine</key>
-			<integer>20</integer>
+			<integer>340</integer>
+		</dict>
+		<key>Net.h</key>
+		<dict>
+			<key>caret</key>
+			<dict>
+				<key>column</key>
+				<integer>0</integer>
+				<key>line</key>
+				<integer>0</integer>
+			</dict>
+			<key>firstVisibleColumn</key>
+			<integer>0</integer>
+			<key>firstVisibleLine</key>
+			<integer>0</integer>
+		</dict>
+		<key>Sandbox.cpp</key>
+		<dict>
+			<key>caret</key>
+			<dict>
+				<key>column</key>
+				<integer>0</integer>
+				<key>line</key>
+				<integer>18</integer>
+			</dict>
+			<key>firstVisibleColumn</key>
+			<integer>0</integer>
+			<key>firstVisibleLine</key>
+			<integer>0</integer>
+		</dict>
+		<key>makefile.apple</key>
+		<dict>
+			<key>caret</key>
+			<dict>
+				<key>column</key>
+				<integer>36</integer>
+				<key>line</key>
+				<integer>11</integer>
+			</dict>
+			<key>firstVisibleColumn</key>
+			<integer>0</integer>
+			<key>firstVisibleLine</key>
+			<integer>0</integer>
+		</dict>
+		<key>makefile.linux</key>
+		<dict>
+			<key>caret</key>
+			<dict>
+				<key>column</key>
+				<integer>0</integer>
+				<key>line</key>
+				<integer>16</integer>
+			</dict>
+			<key>firstVisibleColumn</key>
+			<integer>0</integer>
+			<key>firstVisibleLine</key>
+			<integer>0</integer>
 		</dict>
 	</dict>
 	<key>openDocuments</key>
 	<array>
+		<string>makefile.linux</string>
+		<string>Net.h</string>
+		<string>makefile.apple</string>
 		<string>Game.rb</string>
+		<string>Client.cpp</string>
+		<string>Sandbox.cpp</string>
 	</array>
 	<key>showFileHierarchyDrawer</key>
 	<true/>
 	<key>windowFrame</key>
-	<string>{{203, 4}, {1075, 774}}</string>
+	<string>{{207, 3}, {1075, 774}}</string>
 </dict>
 </plist>
