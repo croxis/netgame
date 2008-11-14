@@ -462,10 +462,11 @@ namespace net
 				if ( (int) packet->data.size() <= size )
 				{
 					nodeId = packet->nodeId;
-					memcpy( data, &packet->data[0], packet->data.size() );
+					size = packet->data.size();
+					memcpy( data, &packet->data[0], size );
 					delete packet;
 					receivedPackets.pop();
-					return packet->data.size();
+					return size;
 				}
 				else
 				{
