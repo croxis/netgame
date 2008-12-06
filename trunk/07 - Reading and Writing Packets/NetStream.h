@@ -8,6 +8,7 @@
 #define NET_STREAM_H
 
 #include <assert.h>
+#include <string.h>
 #include <algorithm>
 
 namespace net
@@ -33,6 +34,8 @@ namespace net
 			this->ptr = (unsigned char*) buffer;
 			this->bytes = bytes;
 			bit_index = 0;
+			if ( mode == Write )
+				memset( buffer, 0, bytes );
 		}
 		
 		void WriteBits( unsigned int value, int bits = 32 )
