@@ -29,21 +29,26 @@
 
 #if PLATFORM == PLATFORM_WINDOWS
 
+	#define WIN32_LEAN_AND_MEAN
+	#define VC_EXTRALEAN
 	#include <winsock2.h>
 	#pragma comment( lib, "wsock32.lib" )
+	#undef min
+	#undef max
+	#undef GetObject
 
 #elif PLATFORM == PLATFORM_MAC || PLATFORM == PLATFORM_UNIX
 
 	#include <sys/socket.h>
 	#include <netinet/in.h>
 	#include <fcntl.h>
+	#include <unistd.h>
 
 #endif
 
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
 #include <vector>
 #include <map>
 #include <stack>
@@ -911,7 +916,8 @@ namespace net
 			assert( running );
 			if ( address.GetAddress() == 0 )
 				return false;
-			unsigned char packet[size+4];
+//			unsigned char packet[size+4];
+			unsigned char* packet = reinterpret_cast<unsigned char*>(alloca(size+4));
 			packet[0] = (unsigned char) ( protocolId >> 24 );
 			packet[1] = (unsigned char) ( ( protocolId >> 16 ) & 0xFF );
 			packet[2] = (unsigned char) ( ( protocolId >> 8 ) & 0xFF );
@@ -923,7 +929,8 @@ namespace net
 		virtual int ReceivePacket( unsigned char data[], int size )
 		{
 			assert( running );
-			unsigned char packet[size+4];
+//			unsigned char packet[size+4];
+			unsigned char* packet = reinterpret_cast<unsigned char*>(alloca(size+4));
 			Address sender;
 			int bytes_read = socket.Receive( sender, packet, size + 4 );
 			if ( bytes_read == 0 )
@@ -1035,7 +1042,8 @@ namespace net
 			}
 			#endif
 			const int header = 12;
-			unsigned char packet[header+size];
+//			unsigned char packet[header+size];
+			unsigned char* packet = reinterpret_cast<unsigned char*>(alloca(header+size));
 			unsigned int seq = reliabilitySystem.GetLocalSequence();
 			unsigned int ack = reliabilitySystem.GetRemoteSequence();
 			unsigned int ack_bits = reliabilitySystem.GenerateAckBits();
@@ -1052,7 +1060,8 @@ namespace net
 			const int header = 12;
 			if ( size <= header )
 				return false;
-			unsigned char packet[header+size];
+//			unsigned char packet[header+size];
+			unsigned char* packet = reinterpret_cast<unsigned char*>(alloca(header+size));
 			int received_bytes = Connection::ReceivePacket( packet, size + header );
 			if ( received_bytes == 0 )
 				return false;
@@ -1368,7 +1377,9 @@ namespace net
 					else if ( nodes[i].mode == NodeState::Connected )
 					{
 						// node is connected: send "update" packets
-						unsigned char packet[5+6*nodes.size()];
+						const size_t packetSize = 5+6*nodes.size();
+//						unsigned char packet[packetSize];
+						unsigned char* packet = reinterpret_cast<unsigned char*>(alloca(packetSize));
 						packet[0] = (unsigned char) ( ( protocolId >> 24 ) & 0xFF );
 						packet[1] = (unsigned char) ( ( protocolId >> 16 ) & 0xFF );
 						packet[2] = (unsigned char) ( ( protocolId >> 8 ) & 0xFF );
@@ -1385,7 +1396,7 @@ namespace net
 							ptr[5] = (unsigned char) ( ( nodes[j].address.GetPort() ) & 0xFF );
 							ptr += 6;
 						}
-						socket.Send( nodes[i].address, packet, sizeof(packet) );
+						socket.Send( nodes[i].address, packet, packetSize );
 					}
 				}
 				sendAccumulator -= sendRate;
@@ -1614,8 +1625,9 @@ namespace net
 			while ( true )
 			{
 				Address sender;
-				unsigned char data[maxPacketSize];
-				int size = socket.Receive( sender, data, sizeof(data) );
+//				unsigned char data[maxPacketSize];
+				unsigned char* data = reinterpret_cast<unsigned char*>(alloca(maxPacketSize));
+				int size = socket.Receive( sender, data, maxPacketSize );
 				if ( !size )
 					break;
 				ProcessPacket( sender, data, size );

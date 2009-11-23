@@ -9,7 +9,11 @@
 
 #include "Config.h"
 #include "Mathematics.h"
-#include <stdint.h>
+#if PLATFORM == PLATFORM_WINDOWS
+	#include "stdint.h"
+#else
+	#include <stdint.h>
+#endif
 #include <stdio.h>
 
 #include "Activation.h"
@@ -559,17 +563,17 @@ namespace game
 					}
 					// bobbing force
 					{
-						float wobble_x = sin(frame[playerId]*0.1+1) + sin(frame[playerId]*0.05f+3) + sin(frame[playerId]+10);
-						float wobble_y = sin(frame[playerId]*0.1+2) + sin(frame[playerId]*0.05f+4) + sin(frame[playerId]+11);
-						float wobble_z = sin(frame[playerId]*0.1+3) + sin(frame[playerId]*0.05f+5) + sin(frame[playerId]+12);
+						float wobble_x = sin(frame[playerId]*0.1+1) + sin(frame[playerId]*0.05+3) + sin(frame[playerId]+10.0);
+						float wobble_y = sin(frame[playerId]*0.1+2) + sin(frame[playerId]*0.05+4) + sin(frame[playerId]+11.0);
+						float wobble_z = sin(frame[playerId]*0.1+3) + sin(frame[playerId]*0.05+5) + sin(frame[playerId]+12.0);
 						math::Vector force = math::Vector( wobble_x, wobble_y, wobble_z ) * 2.0f;
 						simulation->ApplyForce( activePlayerObject->activeId, force );
 					}
 					// bobbing torque
 					{
-						float wobble_x = sin(frame[playerId]*0.1+10) + sin(frame[playerId]*0.05f+22) + sin(frame[playerId]);
-						float wobble_y = sin(frame[playerId]*0.09+5) + sin(frame[playerId]*0.045f+16) + sin(frame[playerId]);
-						float wobble_z = sin(frame[playerId]*0.11+4) + sin(frame[playerId]*0.055f+9) + sin(frame[playerId]);
+						float wobble_x = sin(frame[playerId]*0.1+10) + sin(frame[playerId]*0.05+22) + sin(static_cast<double>(frame[playerId]));
+						float wobble_y = sin(frame[playerId]*0.09+5) + sin(frame[playerId]*0.045+16) + sin(static_cast<double>(frame[playerId]));
+						float wobble_z = sin(frame[playerId]*0.11+4) + sin(frame[playerId]*0.055+9) + sin(static_cast<double>(frame[playerId]));
 						math::Vector torque = math::Vector( wobble_x, wobble_y, wobble_z ) * 1.5f;
 						simulation->ApplyTorque( activePlayerObject->activeId, torque );
 					}

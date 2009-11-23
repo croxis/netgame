@@ -5,7 +5,10 @@
 */
 
 #include <assert.h>
-#include <unistd.h>
+
+#if PLATFORM != PLATFORM_WINDOWS
+	#include <unistd.h>
+#endif
 
 #include "Game.h"
 #include "View.h"

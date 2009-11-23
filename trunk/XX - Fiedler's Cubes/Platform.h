@@ -11,11 +11,11 @@
 
 #include <assert.h>
 #include <stdio.h>
-#include <unistd.h>
 
 #if PLATFORM == PLATFORM_MAC
 #include "CoreServices/CoreServices.h"
 #include <stdint.h>
+#include <unistd.h>
 #include <mach/mach_time.h>
 #include <pthread.h>
 #include <OpenGl/gl.h>
@@ -31,8 +31,16 @@
 #include <math.h>
 #ifdef TIMER_RDTSC
 #include <stdint.h>
+#include <unistd.h>
 #include <stdio.h>
 #endif
+#endif
+
+#if PLATFORM == PLATFORM_WINDOWS
+#include <GL/GLee.h>
+#include <GL/gl.h>
+#include <GL/glu.h>
+#include <SDL/sdl.h>
 #endif
 
 namespace platform
@@ -113,6 +121,76 @@ namespace platform
 
 #endif
 	
+#if PLATFORM == PLATFORM_WINDOWS
+
+	// worker thread 
+
+	class WorkerThread
+	{
+	public:
+	
+		WorkerThread()
+		{
+			#ifdef MULTITHREADED
+			thread = NULL;
+			#endif
+		}
+	
+		virtual ~WorkerThread()
+		{
+			#ifdef MULTITHREADED
+			thread = NULL;
+			#endif
+		}
+	
+		bool Start()
+		{
+			#ifdef MULTITHREADED
+
+				if ( NULL == (thread = SDL_CreateThread( StaticRun, (void*)this) ) )
+				{
+					printf( "error: SDL_CreateThread failed\n" );
+					return false;
+				}
+		
+			#else
+		
+				Run();
+			
+			#endif
+		
+			return true;
+		}
+	
+		bool Join()
+		{
+			#ifdef MULTITHREADED
+			SDL_WaitThread( thread, NULL );
+			#endif
+			return true;
+		}
+	
+	protected:
+	
+		static int StaticRun( void * data )
+		{
+			WorkerThread * self = (WorkerThread*) data;
+			self->Run();
+			return 0;
+		}
+	
+		virtual void Run() = 0;			// note: override this to implement your thread task
+	
+	private:
+
+		#ifdef MULTITHREADED
+		SDL_Thread *thread;
+		#endif
+	};
+
+#endif
+
+
 	// platform independent wait for n seconds
 
 	#if PLATFORM == PLATFORM_WINDOWS
@@ -380,6 +458,250 @@ namespace platform
 
 	#endif
 
+	#if PLATFORM == PLATFORM_WINDOWS
+
+		class Timer
+		{
+		public:
+	
+			Timer()
+			{
+				reset();
+			}
+	
+			void reset()
+			{
+				QueryPerformanceCounter( reinterpret_cast<LARGE_INTEGER*>(&_startTime) );
+				_deltaTime = _startTime;
+			}
+	
+			float time()
+			{
+				uint64_t counter;
+				QueryPerformanceCounter( reinterpret_cast<LARGE_INTEGER*>(&counter) );
+				float time = subtractTimes( counter, _startTime );
+				return time;
+			}
+	
+			float delta()
+			{
+				uint64_t counter;
+				QueryPerformanceCounter( reinterpret_cast<LARGE_INTEGER*>(&counter) );
+				float dt = subtractTimes( counter, _deltaTime );
+				_deltaTime = counter;
+				return dt;
+			}
+	
+			float resolution()
+			{
+				uint64_t freq;
+				QueryPerformanceFrequency( reinterpret_cast<LARGE_INTEGER*>(&freq) );
+				return 1.0 / static_cast<double>(freq);
+			}
+	
+		private:
+		
+			double subtractTimes( uint64_t endTime, uint64_t startTime )
+			{
+				uint64_t difference = endTime - startTime;
+				static double conversion = 0.0;
+				if ( conversion == 0.0 )
+				{
+					uint64_t freq;
+					QueryPerformanceFrequency( reinterpret_cast<LARGE_INTEGER*>(&freq) );
+					conversion = 1.0 / static_cast<double>(freq);
+				}
+				return conversion * static_cast<double>(difference);
+			}		
+
+			uint64_t _startTime;		// start time (to avoid accumulating a float)
+			uint64_t _deltaTime;		// last time delta was called
+		};
+
+	#endif
+
+
+	// basic keyboard input
+
+	static bool spaceKeyDown = false;
+	static bool backSlashKeyDown = false;
+	static bool enterKeyDown = false;
+	static bool delKeyDown = false;
+	static bool escapeKeyDown = false;
+	static bool tabKeyDown = false;
+	static bool pageUpKeyDown = false;
+	static bool pageDownKeyDown = false;
+	static bool upKeyDown = false;
+	static bool downKeyDown = false;
+	static bool leftKeyDown = false;
+	static bool rightKeyDown = false;
+	static bool qKeyDown = false;
+	static bool wKeyDown = false;
+	static bool eKeyDown = false;
+	static bool aKeyDown = false;
+	static bool sKeyDown = false;
+	static bool dKeyDown = false;
+	static bool zKeyDown = false;
+	static bool tildeKeyDown = false;
+	static bool oneKeyDown = false;
+	static bool twoKeyDown = false;
+	static bool threeKeyDown = false;
+	static bool fourKeyDown = false;
+	static bool fiveKeyDown = false;
+	static bool sixKeyDown = false;
+	static bool sevenKeyDown = false;
+	static bool eightKeyDown = false;
+	static bool nineKeyDown = false;
+	static bool zeroKeyDown = false;
+	static bool f1KeyDown = false;
+	static bool f2KeyDown = false;
+	static bool f3KeyDown = false;
+	static bool f4KeyDown = false;
+	static bool f5KeyDown = false;
+	static bool f6KeyDown = false;
+	static bool f7KeyDown = false;
+	static bool f8KeyDown = false;
+	static bool controlKeyDown = false;
+	static bool altKeyDown = false;
+
+
+	struct Input
+	{
+		static Input Sample()
+		{
+			Input input;
+		
+			input.left = leftKeyDown;
+			input.right = rightKeyDown;
+			input.up = upKeyDown;
+			input.down = downKeyDown;
+			input.space = spaceKeyDown;
+			input.escape = escapeKeyDown;
+			input.tab = tabKeyDown;
+			input.backslash = backSlashKeyDown;
+			input.enter = enterKeyDown;
+			input.del = delKeyDown;
+			input.pageUp = pageUpKeyDown;
+			input.pageDown = pageDownKeyDown;
+			input.q = qKeyDown;
+			input.w = wKeyDown;
+			input.e = eKeyDown;
+			input.a = aKeyDown;
+			input.s = sKeyDown;
+			input.d = dKeyDown;
+			input.z = zKeyDown;
+			input.tilde = tildeKeyDown;
+			input.one = oneKeyDown;
+			input.two = twoKeyDown;
+			input.three = threeKeyDown;
+			input.four = fourKeyDown;
+			input.five = fiveKeyDown;
+			input.six = sixKeyDown;
+			input.seven = sevenKeyDown;
+			input.eight = eightKeyDown;
+			input.nine = nineKeyDown;
+			input.zero = zeroKeyDown;
+			input.f1 = f1KeyDown;
+			input.f2 = f2KeyDown;
+			input.f3 = f3KeyDown;
+			input.f4 = f4KeyDown;
+			input.f5 = f5KeyDown;
+			input.f6 = f6KeyDown;
+			input.f7 = f7KeyDown;
+			input.f8 = f8KeyDown;
+			input.control = controlKeyDown;
+			input.alt = altKeyDown;
+
+			return input;
+		}
+	
+		Input()
+		{
+			left = false;
+			right = false;
+			up = false;
+			down = false;
+			space = false;
+			escape = false;
+			tab = false;
+			backslash = false;
+			enter = false;
+			del = false;
+			pageUp = false;
+			pageDown = false;
+			q = false;
+			w = false;
+			e = false;
+			a = false;
+			s = false;
+			d = false;
+			z = false;
+			tilde = false;
+			one = false;
+			two = false;
+			three = false;
+			four = false;
+			five = false;
+			six = false;
+			seven = false;
+			eight = false;
+			nine = false;
+			zero = false;
+			f1 = false;
+			f2 = false;
+			f3 = false;
+			f4 = false;
+			f5 = false;
+			f6 = false;
+			f7 = false;
+			f8 = false;
+			control = false;
+			alt = false;
+		}
+
+		bool left;
+		bool right;
+		bool up;
+		bool down;
+		bool space;
+		bool escape;
+		bool tab;
+		bool backslash;
+		bool enter;
+		bool del;
+		bool pageUp;
+		bool pageDown;
+		bool q;
+		bool w;
+		bool e;
+		bool a;
+		bool s;
+		bool d;
+		bool z;
+		bool tilde;
+		bool one;
+		bool two;
+		bool three;
+		bool four;
+		bool five;
+		bool six;
+		bool seven;
+		bool eight;
+		bool nine;
+		bool zero;
+		bool f1;
+		bool f2;
+		bool f3;
+		bool f4;
+		bool f5;
+		bool f6;
+		bool f7;
+		bool f8;
+		bool control;
+		bool alt;
+	};
+
+
 	#if PLATFORM == PLATFORM_MAC
 
 	static pascal OSErr quitEventHandler( const AppleEvent *appleEvt, AppleEvent *reply, void * something )
@@ -426,47 +748,6 @@ namespace platform
 	#define QZ_F6			0x61
 	#define QZ_F7			0x62
 	#define QZ_F8			0x64
-
-	static bool spaceKeyDown = false;
-	static bool backSlashKeyDown = false;
-	static bool enterKeyDown = false;
-	static bool delKeyDown = false;
-	static bool escapeKeyDown = false;
-	static bool tabKeyDown = false;
-	static bool pageUpKeyDown = false;
-	static bool pageDownKeyDown = false;
-	static bool upKeyDown = false;
-	static bool downKeyDown = false;
-	static bool leftKeyDown = false;
-	static bool rightKeyDown = false;
-	static bool qKeyDown = false;
-	static bool wKeyDown = false;
-	static bool eKeyDown = false;
-	static bool aKeyDown = false;
-	static bool sKeyDown = false;
-	static bool dKeyDown = false;
-	static bool zKeyDown = false;
-	static bool tildeKeyDown = false;
-	static bool oneKeyDown = false;
-	static bool twoKeyDown = false;
-	static bool threeKeyDown = false;
-	static bool fourKeyDown = false;
-	static bool fiveKeyDown = false;
-	static bool sixKeyDown = false;
-	static bool sevenKeyDown = false;
-	static bool eightKeyDown = false;
-	static bool nineKeyDown = false;
-	static bool zeroKeyDown = false;
-	static bool f1KeyDown = false;
-	static bool f2KeyDown = false;
-	static bool f3KeyDown = false;
-	static bool f4KeyDown = false;
-	static bool f5KeyDown = false;
-	static bool f6KeyDown = false;
-	static bool f7KeyDown = false;
-	static bool f8KeyDown = false;
-	static bool controlKeyDown = false;
-	static bool altKeyDown = false;
 
 	pascal OSStatus keyboardEventHandler( EventHandlerCallRef nextHandler, EventRef event, void * userData )
 	{
@@ -703,144 +984,112 @@ namespace platform
 		CGReleaseAllDisplays();
 	}
 
-	// basic keyboard input
+#endif
 
-	struct Input
+#if PLATFORM == PLATFORM_WINDOWS
+	void HideMouseCursor()
 	{
-		static Input Sample()
+		SDL_ShowCursor( 0 );
+	}
+
+	void ShowMouseCursor()
+	{
+		SDL_ShowCursor( 1 );
+	}
+
+	bool OpenDisplay( const char title[], int & width, int & height )
+	{
+		SDL_Init( SDL_INIT_EVERYTHING );
+
+		SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
+		SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 24 );
+		SDL_GL_SetAttribute( SDL_GL_STENCIL_SIZE, 8 );
+		SDL_SetVideoMode( DisplayWidth, DisplayHeight, 32, SDL_OPENGL /*| SDL_FULLSCREEN*/ );
+		SDL_WM_SetCaption( title, NULL );
+
+		return true;
+	}
+
+	void UpdateDisplay( int interval = 1 )
+	{
+		SDL_Event event;
+
+		// handle all SDL events that we might've received in this loop iteration
+		while (SDL_PollEvent(&event))
 		{
-			Input input;
-		
-			input.left = leftKeyDown;
-			input.right = rightKeyDown;
-			input.up = upKeyDown;
-			input.down = downKeyDown;
-			input.space = spaceKeyDown;
-			input.escape = escapeKeyDown;
-			input.tab = tabKeyDown;
-			input.backslash = backSlashKeyDown;
-			input.enter = enterKeyDown;
-			input.del = delKeyDown;
-			input.pageUp = pageUpKeyDown;
-			input.pageDown = pageDownKeyDown;
-			input.q = qKeyDown;
-			input.w = wKeyDown;
-			input.e = eKeyDown;
-			input.a = aKeyDown;
-			input.s = sKeyDown;
-			input.d = dKeyDown;
-			input.z = zKeyDown;
-			input.tilde = tildeKeyDown;
-			input.one = oneKeyDown;
-			input.two = twoKeyDown;
-			input.three = threeKeyDown;
-			input.four = fourKeyDown;
-			input.five = fiveKeyDown;
-			input.six = sixKeyDown;
-			input.seven = sevenKeyDown;
-			input.eight = eightKeyDown;
-			input.nine = nineKeyDown;
-			input.zero = zeroKeyDown;
-			input.f1 = f1KeyDown;
-			input.f2 = f2KeyDown;
-			input.f3 = f3KeyDown;
-			input.f4 = f4KeyDown;
-			input.f5 = f5KeyDown;
-			input.f6 = f6KeyDown;
-			input.f7 = f7KeyDown;
-			input.f8 = f8KeyDown;
-			input.control = controlKeyDown;
-			input.alt = altKeyDown;
+			bool keyDown = false;
 
-			return input;
-		}
-	
-		Input()
-		{
-			left = false;
-			right = false;
-			up = false;
-			down = false;
-			space = false;
-			escape = false;
-			tab = false;
-			backslash = false;
-			enter = false;
-			del = false;
-			pageUp = false;
-			pageDown = false;
-			q = false;
-			w = false;
-			e = false;
-			a = false;
-			s = false;
-			d = false;
-			z = false;
-			tilde = false;
-			one = false;
-			two = false;
-			three = false;
-			four = false;
-			five = false;
-			six = false;
-			seven = false;
-			eight = false;
-			nine = false;
-			zero = false;
-			f1 = false;
-			f2 = false;
-			f3 = false;
-			f4 = false;
-			f5 = false;
-			f6 = false;
-			f7 = false;
-			f8 = false;
-			control = false;
-			alt = false;
+			switch (event.type)
+			{
+				case SDL_QUIT:
+					SDL_Quit();
+					exit( 0 );
+
+				case SDL_KEYDOWN:
+					keyDown ^= true;
+					// fall-through
+
+				case SDL_KEYUP:
+					controlKeyDown = ( event.key.keysym.mod & KMOD_CTRL ) != 0 ? true : false;
+					altKeyDown = ( event.key.keysym.mod & KMOD_ALT ) != 0 ? true : false;
+
+					switch(event.key.keysym.sym)
+					{
+						case SDLK_SPACE: spaceKeyDown = keyDown; break;
+						case SDLK_RETURN: enterKeyDown = keyDown; break;
+						case SDLK_BACKSLASH: backSlashKeyDown = keyDown; break;
+						case SDLK_DELETE: delKeyDown = keyDown; break;
+						case SDLK_ESCAPE: escapeKeyDown = keyDown; break;
+						case SDLK_TAB: tabKeyDown = keyDown; break;
+						case SDLK_PAGEUP: pageUpKeyDown = keyDown; break;
+						case SDLK_PAGEDOWN: pageDownKeyDown = keyDown; break;
+						case SDLK_UP: upKeyDown = keyDown; break;
+						case SDLK_DOWN: downKeyDown = keyDown; break;
+						case SDLK_LEFT: leftKeyDown = keyDown; break;
+						case SDLK_RIGHT: rightKeyDown = keyDown; break;
+						case SDLK_q: qKeyDown = keyDown; break;
+						case SDLK_w: wKeyDown = keyDown; break;
+						case SDLK_e: eKeyDown = keyDown; break;
+						case SDLK_a: aKeyDown = keyDown; break;
+						case SDLK_s: sKeyDown = keyDown; break;
+						case SDLK_d: dKeyDown = keyDown; break;
+						case SDLK_z: zKeyDown = keyDown; break;
+						case SDLK_BACKQUOTE: tildeKeyDown = keyDown; break;
+						case SDLK_1: oneKeyDown = keyDown; break;
+						case SDLK_2: twoKeyDown = keyDown; break;
+						case SDLK_3: threeKeyDown = keyDown; break;
+						case SDLK_4: fourKeyDown = keyDown; break;
+						case SDLK_5: fiveKeyDown = keyDown; break;
+						case SDLK_6: sixKeyDown = keyDown; break;
+						case SDLK_7: sevenKeyDown = keyDown; break;
+						case SDLK_8: eightKeyDown = keyDown; break;
+						case SDLK_9: nineKeyDown = keyDown; break;
+						case SDLK_0: zeroKeyDown = keyDown; break;
+						case SDLK_F1: f1KeyDown = keyDown; break;
+						case SDLK_F2: f2KeyDown = keyDown; break;
+						case SDLK_F3: f3KeyDown = keyDown; break;
+						case SDLK_F4: f4KeyDown = keyDown; break;
+						case SDLK_F5: f5KeyDown = keyDown; break;
+						case SDLK_F6: f6KeyDown = keyDown; break;
+						case SDLK_F7: f7KeyDown = keyDown; break;
+						case SDLK_F8: f8KeyDown = keyDown; break;
+						default: break;
+					}
+					break;
+
+				default:
+					break;
+			}
 		}
 
-		bool left;
-		bool right;
-		bool up;
-		bool down;
-		bool space;
-		bool escape;
-		bool tab;
-		bool backslash;
-		bool enter;
-		bool del;
-		bool pageUp;
-		bool pageDown;
-		bool q;
-		bool w;
-		bool e;
-		bool a;
-		bool s;
-		bool d;
-		bool z;
-		bool tilde;
-		bool one;
-		bool two;
-		bool three;
-		bool four;
-		bool five;
-		bool six;
-		bool seven;
-		bool eight;
-		bool nine;
-		bool zero;
-		bool f1;
-		bool f2;
-		bool f3;
-		bool f4;
-		bool f5;
-		bool f6;
-		bool f7;
-		bool f8;
-		bool control;
-		bool alt;
-	};
+		wglSwapIntervalEXT( interval );
+		SDL_GL_SwapBuffers();
+	}
 
+	void CloseDisplay()
+	{
+		SDL_Quit();
+	}
 #endif
 
 }

@@ -321,7 +321,8 @@ namespace engine
 
 		const InteractionPair * GetInteractionPairs() const
 		{
-			return &interactionPairs[0];
+			// returning &interactionPairs[0] caused an array bounds error with in a debug build with vs2008 - h3r3tic
+			return interactionPairs.size() > 0 ? &interactionPairs[0] : NULL;
 		}
 
 		int GetNumInteractionPairs() const
