@@ -41,6 +41,7 @@
 #include <GL/gl.h>
 #include <GL/glu.h>
 #include <SDL/sdl.h>
+#undef main
 #endif
 
 namespace platform
