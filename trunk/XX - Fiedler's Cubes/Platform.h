@@ -1004,7 +1004,7 @@ namespace platform
 		SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
 		SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 24 );
 		SDL_GL_SetAttribute( SDL_GL_STENCIL_SIZE, 8 );
-		SDL_SetVideoMode( DisplayWidth, DisplayHeight, 32, SDL_OPENGL /*| SDL_FULLSCREEN*/ );
+		SDL_SetVideoMode( DisplayWidth, DisplayHeight, 32, SDL_OPENGL | SDL_FULLSCREEN );
 		SDL_WM_SetCaption( title, NULL );
 
 		return true;

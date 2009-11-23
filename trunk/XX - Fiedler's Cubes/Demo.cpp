@@ -169,6 +169,9 @@ int main( int argc, char * argv[] )
 			if ( input.zero )
 				demoIndex = 9;
 
+			if ( input.f4 )
+				break;
+
 			static bool enterDownLastFrame = false;
 			if ( input.enter && !enterDownLastFrame )
 				shadows = !shadows;
